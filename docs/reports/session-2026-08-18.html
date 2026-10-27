@@ -1,0 +1,680 @@
+<title>측정이 여섯 번 틀렸다</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&family=Noto+Sans+KR:wght@300;400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+:root{
+  --paper:#f6f7f9;
+  --surface:#ffffff;
+  --sunk:#eef0f4;
+  --ink:#14181f;
+  --ink-2:#3d4655;
+  --ink-3:#6b7688;
+  --rule:#d9dee6;
+  --rule-soft:#e7ebf1;
+  --accent:#a35f00;
+  --accent-soft:#f3e6d2;
+  --alert:#9d2727;
+  --alert-soft:#f5e0e0;
+  --ok:#2c624a;
+  --ok-soft:#dcebe4;
+  --shadow:0 1px 2px rgba(20,24,31,.05),0 8px 24px -16px rgba(20,24,31,.28);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#101319;
+    --surface:#171b23;
+    --sunk:#1d222b;
+    --ink:#e8ecf3;
+    --ink-2:#b3bccb;
+    --ink-3:#7d8799;
+    --rule:#2a3140;
+    --rule-soft:#222836;
+    --accent:#e0a259;
+    --accent-soft:#3a2b17;
+    --alert:#e3807f;
+    --alert-soft:#3a2020;
+    --ok:#79c2a1;
+    --ok-soft:#1a2f26;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#101319;
+  --surface:#171b23;
+  --sunk:#1d222b;
+  --ink:#e8ecf3;
+  --ink-2:#b3bccb;
+  --ink-3:#7d8799;
+  --rule:#2a3140;
+  --rule-soft:#222836;
+  --accent:#e0a259;
+  --accent-soft:#3a2b17;
+  --alert:#e3807f;
+  --alert-soft:#3a2020;
+  --ok:#79c2a1;
+  --ok-soft:#1a2f26;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.8);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:"Noto Sans KR",system-ui,-apple-system,sans-serif;
+  font-weight:350;
+  font-size:16px;
+  line-height:1.78;
+  -webkit-font-smoothing:antialiased;
+  word-break:keep-all;
+}
+.wrap{max-width:1020px;margin:0 auto;padding:0 24px 120px}
+
+/* ── 표제 ───────────────────────────────── */
+header.mast{
+  padding:72px 0 40px;
+  border-bottom:2px solid var(--ink);
+  margin-bottom:8px;
+}
+.kicker{
+  font-family:"IBM Plex Mono",monospace;
+  font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--accent);font-weight:600;margin-bottom:20px;
+}
+h1{
+  font-family:"Noto Serif KR",Georgia,serif;
+  font-weight:700;font-size:clamp(2.3rem,6vw,3.6rem);
+  line-height:1.15;letter-spacing:-.02em;margin:0 0 20px;
+  text-wrap:balance;
+}
+.sub{
+  font-size:1.06rem;color:var(--ink-2);max-width:62ch;margin:0 0 28px;
+  font-weight:350;
+}
+.meta{
+  display:flex;flex-wrap:wrap;gap:8px 28px;
+  font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-3);
+}
+.meta b{color:var(--ink-2);font-weight:500}
+
+/* ── 초록 ───────────────────────────────── */
+.abstract{
+  background:var(--surface);border:1px solid var(--rule);
+  border-left:3px solid var(--accent);
+  padding:28px 32px;margin:40px 0 8px;box-shadow:var(--shadow);
+}
+.abstract h2{
+  font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--accent);margin:0 0 14px;font-weight:600;
+}
+.abstract p{margin:0 0 12px;max-width:66ch}
+.abstract p:last-child{margin-bottom:0}
+
+/* ── 섹션 ───────────────────────────────── */
+section{margin:64px 0 0}
+h2.sec{
+  font-family:"Noto Serif KR",Georgia,serif;
+  font-size:1.7rem;font-weight:700;letter-spacing:-.015em;
+  margin:0 0 8px;padding-bottom:12px;border-bottom:1px solid var(--rule);
+  display:flex;align-items:baseline;gap:14px;text-wrap:balance;
+}
+h2.sec .num{
+  font-family:"IBM Plex Mono",monospace;font-size:.8rem;color:var(--accent);
+  font-weight:600;flex:none;
+}
+h3{
+  font-family:"Noto Serif KR",Georgia,serif;
+  font-size:1.18rem;font-weight:600;margin:36px 0 10px;letter-spacing:-.01em;
+  text-wrap:balance;
+}
+p{margin:0 0 16px;max-width:68ch}
+ul,ol{margin:0 0 16px;padding-left:1.3em;max-width:68ch}
+li{margin:0 0 7px}
+strong{font-weight:700;color:var(--ink)}
+em{font-style:normal;background:var(--accent-soft);padding:.05em .3em;border-radius:2px}
+code{
+  font-family:"IBM Plex Mono",monospace;font-size:.87em;
+  background:var(--sunk);padding:.12em .38em;border-radius:3px;
+  border:1px solid var(--rule-soft);
+}
+a{color:var(--accent);text-underline-offset:3px}
+a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── 타임라인 ───────────────────────────── */
+.tl{display:flex;flex-direction:column;gap:0;margin:28px 0 0}
+.ev{
+  display:grid;grid-template-columns:88px 1fr;gap:0 24px;
+  border-top:1px solid var(--rule-soft);padding:26px 0;
+}
+.ev:last-child{border-bottom:1px solid var(--rule-soft)}
+.clock{
+  font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:600;
+  color:var(--accent);padding-top:5px;font-variant-numeric:tabular-nums;
+  letter-spacing:.02em;
+}
+.ev h3{margin:0 0 8px;font-size:1.1rem}
+.ev p:last-child{margin-bottom:0}
+.tag{
+  display:inline-block;font-family:"IBM Plex Mono",monospace;
+  font-size:10px;letter-spacing:.09em;text-transform:uppercase;font-weight:600;
+  padding:2px 8px;border-radius:2px;margin-left:8px;vertical-align:2px;
+}
+.tag.bad{background:var(--alert-soft);color:var(--alert)}
+.tag.good{background:var(--ok-soft);color:var(--ok)}
+.tag.note{background:var(--accent-soft);color:var(--accent)}
+
+/* ── 데이터 블록 ─────────────────────────── */
+.data{margin:20px 0;overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{
+  border-collapse:collapse;width:100%;font-size:.88rem;
+  font-variant-numeric:tabular-nums;min-width:min(100%,480px);
+}
+th,td{
+  text-align:left;padding:9px 14px 9px 0;
+  border-bottom:1px solid var(--rule-soft);vertical-align:top;
+}
+th{
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:600;
+  letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);
+  border-bottom:1px solid var(--rule);white-space:nowrap;
+}
+td.n,th.n{text-align:right;padding-right:20px;white-space:nowrap}
+tr:last-child td{border-bottom:none}
+.f-bad{color:var(--alert);font-weight:700}
+.f-ok{color:var(--ok);font-weight:700}
+
+pre{
+  font-family:"IBM Plex Mono",monospace;font-size:12.5px;line-height:1.65;
+  background:var(--sunk);border:1px solid var(--rule-soft);
+  border-left:3px solid var(--ink-3);
+  padding:16px 18px;margin:20px 0;overflow-x:auto;
+  color:var(--ink-2);
+}
+pre b{color:var(--ink);font-weight:600}
+pre .hi{color:var(--alert);font-weight:600}
+
+.callout{
+  background:var(--surface);border:1px solid var(--rule);
+  border-left:3px solid var(--alert);
+  padding:20px 24px;margin:24px 0;box-shadow:var(--shadow);
+}
+.callout.key{border-left-color:var(--accent)}
+.callout p:last-child{margin-bottom:0}
+.callout .lbl{
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.12em;
+  text-transform:uppercase;font-weight:600;color:var(--alert);
+  display:block;margin-bottom:8px;
+}
+.callout.key .lbl{color:var(--accent)}
+
+.foot{
+  margin-top:80px;padding-top:24px;border-top:1px solid var(--rule);
+  font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-3);
+  line-height:2;
+}
+.foot b{color:var(--ink-2);font-weight:500}
+
+@media (max-width:640px){
+  .wrap{padding:0 18px 80px}
+  .ev{grid-template-columns:1fr;gap:6px}
+  .clock{padding-top:0}
+  .abstract{padding:22px 20px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <div class="kicker">WeRU.B AI Server · 세션 기록 · 2026-08-18</div>
+  <h1>측정이 여섯 번 틀렸다</h1>
+  <p class="sub">하루 동안 다섯 건의 판정을 내렸다. 그 판정을 내리기 위해 쓴 도구가 <strong>여섯 번 틀렸다</strong> — 마지막 두 번은 통제군을 걸고도 뚫렸다. 이 문서는 그 시계열 기록이다.</p>
+  <div class="meta">
+    <span><b>버전</b> v2.125.4 → v2.125.5</span>
+    <span><b>커밋</b> 20</span>
+    <span><b>측정</b> N=40 A/B 3회 · 재현 프로브 2회</span>
+    <span><b>코드 변경</b> writing.py 2 · medical_law 2 · 신규 1</span>
+  </div>
+</header>
+
+<div class="abstract">
+  <h2>초록</h2>
+  <p>이 세션의 산출물은 판정 다섯 건이다 — 프로덕션 결함 봉합 1건, 신규 모델 후보 기각 2건, 기존 채택 근거 철회 1건, 미처치 결함 재현 확인 3건. 그러나 기록할 가치가 있는 것은 판정 자체가 아니라 <strong>판정에 이르는 과정에서 측정 도구가 여섯 번 틀렸다</strong>는 사실이다.</p>
+  <p>앞의 네 오류는 성격이 모두 달랐다. 응답 헤더 부재를 "다르다"로 읽은 것, 미지원 엔드포인트의 404를 "없다"로 읽은 것, 크래시한 출력 루프를 완전한 결과로 읽은 것, 그리고 절대 하한을 둔 붕괴 판정기가 정상 출력을 결함으로 센 것. <strong>세 번은 결함을 과대계상하는 방향이었고 한 번은 과소계상 방향이었다.</strong> 뒤의 둘은 성격이 다르다 — <strong>통제군을 걸고도 뚫렸다</strong>(§03).</p>
+  <p>다섯 번째 오류는 도구가 아니라 <strong>나</strong>였다. 재현 0/10과 0/5를 근거로 결함 두 건을 "종결"로 보고했는데, 같은 날 저녁 표본을 8회 더 늘리자 둘 다 다시 나왔다 — 저율 확률적 결함이었다. <em>이 문서가 결론에 적어 둔 규율을 문서 작성자가 같은 세션 안에서 어겼다.</em></p>
+  <p>여섯 번 다 결국 같은 방법으로 잡혔다 — <em>결과를 세기 전에 답을 아는 표본에 도구를 걸어 본 것</em>. 이 문서는 그 절차가 실제로 무엇을 막았는지를 시계열로 기록한다.</p>
+</div>
+
+<section>
+  <h2 class="sec"><span class="num">01</span>배경과 방법</h2>
+
+  <p>대상 시스템은 Ubuntu RTX 5080 한 대 위에서 LLM·이미지·의료 AI를 서빙하는 통합 서버다. VRAM은 Ollama 기준 <code>15.5 GiB</code>가 가용하고, 상주 모델 <code>qwen2.5:14b</code>가 10.38GB를 점유한다. 이 제약이 이 날 판정 대부분의 배경이다.</p>
+
+  <p>판정 규율은 이 프로젝트가 이전 릴리즈들에서 축적한 것을 그대로 따랐다. 요지는 셋이다.</p>
+
+  <ul>
+    <li><strong>기준은 숫자를 보기 전에 문서로 못 박는다.</strong> 채택·기각·무효화 조건을 사전 등록한다.</li>
+    <li><strong>효과가 확인되지 않은 처치는 하지 않는다.</strong> 재현되지 않는 결함은 처치 대상이 아니다.</li>
+    <li><strong>결함을 세기 전에 탐지기를 라벨 통제군에 건다.</strong> 이 세션의 주제가 된 규율이다.</li>
+  </ul>
+</section>
+
+<section>
+  <h2 class="sec"><span class="num">02</span>시계열</h2>
+
+  <div class="tl">
+
+    <div class="ev">
+      <div class="clock">08:50<br>09:20</div>
+      <div>
+        <h3>v2.125.4 배포 종결 <span class="tag good">봉합</span></h3>
+        <p>전날 착수한 결함의 배포 게이트가 통과했다 — 회귀 <code>1657 passed</code>, 스모크 <code>173/173 · 베이스라인 0</code>. 라이브 재관측에서 <code>/api/writing/seo</code>와 <code>/api/writing/evaluate</code>가 <strong>8/8 실패 → 0/8</strong>로 바뀐 것을 확인했다.</p>
+        <p>결함의 정체는 후처리 순서였다. 한국어 필터를 JSON 문자열에 <em>먼저</em> 태우면 <code>"keywords": [</code>·<code>"score": 70,</code>·<code>}</code> 같은 한글 없는 줄이 전부 삭제된다 — 즉 구조 전부다. 파싱이 깨지고 호출자는 빈 결과를 HTTP 200과 함께 받았다. 간헐이 아니라 늘 그랬으므로, 이 두 엔드포인트는 사실상 동작한 적이 없다.</p>
+      </div>
+    </div>
+
+    <div class="ev">
+      <div class="clock">09:25</div>
+      <div>
+        <h3>CLAUDE.md 헤더 이관 <span class="tag note">정리</span></h3>
+        <p>프로젝트 지침 파일의 <strong>첫 줄 하나가 212KB</strong>였고 매 세션 컨텍스트에 통째로 실리고 있었다. 릴리즈 요약 159건을 아카이브로 옮겨 <strong>250KB → 43KB</strong>로 줄였다. 한 글자도 버리지 않았고 diff로 손실 0을 확인했다.</p>
+        <p>남긴 것은 정체성·최근 릴리즈 5건·<strong>반복되는 결함 클래스 7항목</strong>·백로그다. 마지막 항목이 이 파일에 인라인으로 남을 값이 있는 유일한 부분이다 — 다음 결함을 어디서부터 의심할지를 적은 목록이기 때문이다.</p>
+      </div>
+    </div>
+
+    <div class="ev">
+      <div class="clock">09:35</div>
+      <div>
+        <h3>모델 갱신 조사 <span class="tag bad">탐지기 오류 ①②</span></h3>
+        <p>설치된 40개 모델을 레지스트리 매니페스트와 대조했다. 결과는 <strong>37/37 이미 최신</strong>, 제자리 갱신 0건.</p>
+        <p>첫 시도는 "37개 전부 갱신 필요"라고 답했다. 원격 응답에 <code>Docker-Content-Digest</code> 헤더가 없어 전부 <code>?</code>였고, 그것을 "다르다"로 센 것이다. 매니페스트 본문의 sha256으로 바꾸고 <strong>일치 개수를 자기검증 지표로 출력에 박아</strong> 다시 셌다.</p>
+        <p>두 번째 오류는 곧바로 이어졌다. 모델 계열별 태그 목록을 받으려 <code>/tags/list</code>를 호출했더니 전부 404였다. 이것을 "그 모델은 없다"로 읽을 뻔했는데, <strong>존재가 확실한 것</strong>(우리가 실제로 받아 쓰고 있는 <code>gemma4</code>·<code>qwen3.6</code>)을 같은 질의에 넣어 두었기에 잡혔다 — 그것들도 404였다. 레지스트리가 그 엔드포인트를 지원하지 않을 뿐이었다.</p>
+        <div class="callout key">
+          <span class="lbl">발견</span>
+          <p><strong>Qwen3.8이 오픈웨이트로 공개됐다</strong>(2026-08-14 · Apache 2.0 · dense 27B + 비전 · 262K 컨텍스트). 프로젝트 기록에는 v2.124.30 시점의 조사 결과가 <em>"API 전용 프리뷰 · 오픈웨이트 부재"</em>로 남아 있었다. <strong>전제가 조용히 낡아 있었다.</strong></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="ev">
+      <div class="clock">09:40</div>
+      <div>
+        <h3>16GB 적합성 — 받기 전에 갈랐다 <span class="tag good">방법</span></h3>
+        <p>신규 후보 두 개를 <strong>다운로드 0</strong>으로 판정했다. 이미 디스크에 있던 모델 중 <em>제원이 같은 전세대</em>를 프록시로 쓴 것이다.</p>
+        <div class="data">
+          <table>
+            <thead><tr><th>후보</th><th>프록시 (동형 근거)</th><th>Ollama 로더 실측</th><th>판정</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>qwen3.8:27b</code><br>17.74GB · dense</td>
+                <td><code>qwen3.6:27b</code> 17.42GB<br><span style="color:var(--ink-3)">qwen35 dense · block 64 · embedding 5120 · vision tower = 제원 동일</span></td>
+                <td><code>offloaded 49/66 layers</code><br><strong>17개 층이 CPU</strong></td>
+                <td class="f-bad">탈락</td>
+              </tr>
+              <tr>
+                <td><code>qwen3-vl:30b-a3b</code><br>19.60GB · MoE</td>
+                <td><code>qwen3-coder:30b</code> 18.56GB<br><span style="color:var(--ink-3)">qwen3moe · expert 128 / 활성 8</span></td>
+                <td>49/49 layers<br><code>CPU_Mapped 6,270 MiB</code> (34%)</td>
+                <td>후보 통과</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p><strong>같은 "안 맞음"이 아니다.</strong> dense는 17개 층이 모든 토큰의 임계 경로에 있고, MoE는 활성 파라미터가 3B라 CPU에 있는 전문가 가중치가 매 토큰 전부 필요하지는 않다. 이 프로젝트의 이전 실측(dense 32B 64초 ↔ MoE 25~30초)과 같은 방향이다.</p>
+        <p>측정 중 부수로, 큰 모델을 올릴 때마다 상주 14b와 <strong>30초 주기로 서로를 밀어내는</strong> 축출 왕복이 재현됐다. 어느 후보든 상주 경로로는 쓸 수 없다는 뜻이다.</p>
+      </div>
+    </div>
+
+    <div class="ev">
+      <div class="clock">09:47<br>12:20</div>
+      <div>
+        <h3>heavy 후보 A/B — 기각 <span class="tag bad">사고 · 동시 실행</span></h3>
+        <p>기준을 먼저 문서로 못 박았다. 후보의 주장은 <strong>속도 하나</strong>였으므로(4.34GB 작아 오프로드가 적다), 채택 조건을 "품질 열세 아님 <em>그리고</em> 지연 20% 단축", 동등이면 현행 유지로 등록했다.</p>
+
+        <h3 style="font-size:1rem;margin-top:22px">1차 실행 무효</h3>
+        <p>후보는 <code>think:false</code>를 <strong>무시하고</strong> 추론을 항상 생성했다(실측 3,285~8,632자). 현행은 존중한다(thinking 0자). 이 비대칭 때문에 생성 예산 2048토큰을 추론이 전부 먹었고, <strong>응답 본문이 빈 문자열</strong>로 나왔다 — 6/6 절단, 3/6 무출력. 사전 등록해 둔 무효화 조건에 걸려 중단했다.</p>
+        <p>원인은 내 선검증의 구멍이었다. capability로 <code>thinking</code> <em>지원 여부</em>는 확인했으나 <em>억제가 실제로 먹는지</em>는 확인하지 않았다. 프로젝트 기록에 <span style="color:var(--ink-3)">"전달해도 미억제"</span>라고 이미 적혀 있었다.</p>
+
+        <h3 style="font-size:1rem;margin-top:22px">2차 실행 — 그리고 두 번 돌았다</h3>
+        <p>예산을 양쪽 동일하게 올려 재측정했다. 그런데 예산 교정 때 중첩 <code>ssh</code>로 띄운 런처가 프로세스를 남겼고, 뒤이어 띄운 것과 <strong>동시에 실행</strong>돼 같은 로그·체크포인트·결과 파일을 공유했다.</p>
+        <p>사고였지만 결과적으로 <strong>같은 답변을 독립적으로 두 번 채점한 복제</strong>가 됐다.</p>
+        <div class="data">
+          <table>
+            <thead><tr><th></th><th class="n">패스 #1</th><th class="n">패스 #2 (최종)</th></tr></thead>
+            <tbody>
+              <tr><td>충실도 승패 (후보)</td><td class="n">2승 5패 32동</td><td class="n">0승 6패 32동</td></tr>
+              <tr><td>→ 부호검정 <em>p</em></td><td class="n f-ok">0.453</td><td class="n f-bad">0.031</td></tr>
+              <tr><td>환각 (현행 → 후보)</td><td class="n">+3</td><td class="n">+5</td></tr>
+              <tr><td>품질 평균</td><td class="n">4.306 / 4.219</td><td class="n">4.306 / 4.169</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout">
+          <span class="lbl">이 세션에서 가장 중요한 관측</span>
+          <p><strong>같은 답변인데 채점만 다시 해서 충실도 <em>p</em>가 0.453 ↔ 0.031로 갈렸다.</strong> 단일 패스의 <em>p</em>값 하나로 판정했다면 운에 따라 "판정 불가"도 "기각"도 나올 수 있었다. 동률이 32/40이라 유효 표본이 6~7밖에 안 됐던 것이 원인이다.</p>
+          <p>그래서 판정 무게를 <strong>두 패스에서 모두 성립한 조건</strong>(환각 +3 / +5)에만 두고, 흔들린 충실도는 근거에서 뺐다. 결론은 기각.</p>
+        </div>
+        <p>이 사고는 에이전트가 낸 숫자가 내 보고와 달라 <strong>재확인하다 발견</strong>했다. 그러지 않았으면 패스 #1의 숫자를 최종 결과로 보고했을 것이다.</p>
+
+        <h3 style="font-size:1rem;margin-top:22px">집계가 가리고 있던 것</h3>
+        <p>충실도 평균 차는 0.022였다. 원문을 열자 다른 그림이 나왔다.</p>
+        <div class="data">
+          <table>
+            <thead><tr><th>답변 앞 400자 기계 계수</th><th class="n">현행</th><th class="n">후보</th></tr></thead>
+            <tbody>
+              <tr><td>타법명 등장 (국민건강보험법·약사법·<em>의료인법</em>)</td><td class="n">2/40</td><td class="n f-bad">9/40</td></tr>
+              <tr><td>「시행규칙」 층위 구분</td><td class="n">4/40</td><td class="n f-bad">0/40</td></tr>
+              <tr><td>답변에 '의료법'이 아예 없음</td><td class="n">1/40</td><td class="n f-bad">16/40</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><strong>법령명 오귀속 8건 중 7건이 충실도 1.000 · 환각 없음으로 통과했다.</strong> 한 답변은 "법률명: 국민건강보험법"이라고 라벨까지 달아 놓고 만점이었다(정답은 의료법 제58조의3). 충실도 judge는 주장의 <em>내용</em>이 근거에 있는가를 보고, <em>어느 법률의 조문인가</em>는 판정 축에 없다.</p>
+        <p>한 문항에서는 후보가 <strong>181.5초를 쓰고 0자</strong>를 냈다. <code>done_reason</code>이 <code>length</code>가 아니었으므로 절단이 아니다 — 출력이 통째로 <code>thinking</code> 필드로 가고 본문이 빈 채 정상 종료한 것이다. 라이브였다면 <strong>HTTP 200 + 빈 본문</strong>이다. 현행은 같은 질문을 40.9초에 완결했다.</p>
+        <p>그리고 후보의 평균은 두 번 유리하게 계산됐다. 유효 채점 문항이 38인데, 빠진 둘이 <strong>모두 후보의 사고 지점</strong>이었다. 실패가 결측이 되면 평균은 올라간다.</p>
+      </div>
+    </div>
+
+    <div class="ev">
+      <div class="clock">11:00<br>12:00</div>
+      <div>
+        <h3>개발 맥북 디스크 회수 <span class="tag good">운영</span></h3>
+        <p>여유 공간이 <strong>5.6 GiB</strong>(99% 사용)까지 내려가 있었다. 소스는 하나도 건드리지 않고 <strong>121 GiB</strong>까지 회수했다.</p>
+        <div class="data">
+          <table>
+            <thead><tr><th>대상</th><th class="n">회수</th><th>성격</th></tr></thead>
+            <tbody>
+              <tr><td>Msty <code>models/blobs</code> + 앱</td><td class="n">49.5 GB</td><td>로컬 LLM 앱의 다운로드 모델</td></tr>
+              <tr><td>Rust <code>target</code> 4개 + <code>.next</code> 24개</td><td class="n">~30 GB</td><td>빌드 산출물 — 삭제 전 <code>Cargo.toml</code> 확인</td></tr>
+              <tr><td>패키지 캐시 (pip·yarn·brew)</td><td class="n">15.4 GB</td><td>재생성 가능</td></tr>
+              <tr><td>LM Studio (모델·백엔드·앱)</td><td class="n">14.5 GB</td><td>사용자 지시</td></tr>
+              <tr><td>앱 캐시 (prezi·Chrome·playwright 등)</td><td class="n">11.3 GB</td><td>재생성 가능</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>이 과정에서 <code>ps | grep</code>으로 프로세스를 찾아 죽이려다 <strong>명령줄에 들어 있던 앱 이름이 자기 자신에 매칭돼</strong> 셸이 종료됐다. 이 함정은 이날 네 번 밟았다.</p>
+      </div>
+    </div>
+
+    <div class="ev">
+      <div class="clock">12:40<br>13:40</div>
+      <div>
+        <h3>heavy tier 채택 근거 철회 <span class="tag bad">전제 붕괴</span></h3>
+        <p>후보를 기각하고 나니 "그럼 현행 heavy는 상주 대비 얼마나 나은가"가 남았다. 기록된 수치가 <strong>서로 어긋나 있었다</strong> — 한 릴리즈는 heavy의 충실도 우위를, 다른 릴리즈는 상주의 충실도 우위와 heavy의 품질 우위를 적고 있었다. 같은 실행·같은 judge로 다시 쟀다. 하네스는 채택 판정을 냈던 그것을 손대지 않고 그대로 썼다.</p>
+        <div class="data">
+          <table>
+            <thead><tr><th></th><th class="n">qwen2.5:14b (상주)</th><th class="n">qwen3.6:35b-a3b (heavy)</th></tr></thead>
+            <tbody>
+              <tr><td>충실도 평균</td><td class="n">0.971</td><td class="n">0.987</td></tr>
+              <tr><td><strong>충실도 부호검정</strong></td><td class="n" colspan="2">3승 3패 · 동률 34 · 유효N 6 · <strong>p = 1.000</strong></td></tr>
+              <tr><td>품질 평균</td><td class="n">4.333</td><td class="n">4.325</td></tr>
+              <tr><td><strong>품질 부호검정</strong></td><td class="n" colspan="2">15승 15패 · 동률 9 · 유효N 30 · <strong>p = 1.000</strong></td></tr>
+              <tr><td>환각</td><td class="n">3/40</td><td class="n">3/40</td></tr>
+              <tr><td>생성 중앙</td><td class="n f-ok">5.2초</td><td class="n f-bad">28.7초 (5.52배)</td></tr>
+              <tr><td>heavy가 더 빠른 문항</td><td class="n">—</td><td class="n f-bad">0 / 40</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><strong>완전한 무승부다.</strong> 이전 측정의 "품질 유의 우세(p=0.039, N=16)"가 N=40에서 15승 15패로 사라졌다. 같은 프로젝트에서 이전에도 한 번 겪은 패턴이다 — 다른 후보가 N=8에서 우세해 보이다 N=16에서 재현에 실패했고, 그때 남긴 규율이 <em>"heavy 후보는 N≥16으로 시작"</em>이었다. <strong>16도 부족했다.</strong></p>
+        <div class="callout key">
+          <span class="lbl">평균과 쌍 비교가 엇갈린다</span>
+          <p>충실도 평균은 0.971 대 0.987로 heavy가 나아 보이지만 쌍 비교는 3승 3패다. <strong>동률이 34문항</strong>이고, 평균 차는 소수 문항의 <em>크기</em>에서 나온 것이지 <em>방향</em>이 아니다. 평균만 인용하면 없는 우위가 생긴다.</p>
+        </div>
+        <p>모델은 바꾸지 않았다. heavy tier는 on-demand라 쓰지 않으면 비용이 0이고, 이 측정은 의료법 근거 기반 독해 하나다. <strong>바꾼 것은 근거다</strong> — "heavy는 품질이 더 좋다"를 전제로 배선하면 안 된다.</p>
+      </div>
+    </div>
+
+    <div class="ev">
+      <div class="clock">14:00</div>
+      <div>
+        <h3>미처치 실결함 재현 확인 <span class="tag bad">종결 판정 2건 철회됨</span></h3>
+        <p>13일 전 배치 전수 판정에서 실결함으로 확정하고 처치하지 않은 셋이 남아 있었다. 처치 전에 <strong>아직 재현되는지부터</strong> 확인했다. 탐지기는 <strong>당시 저장된 오답을 양성 통제군</strong>으로 써서 검증했다 — 결함이 확정된 라벨 표본이므로 그대로 통제군이 된다.</p>
+        <div class="data">
+          <table>
+            <thead><tr><th>결함</th><th class="n">1차 (오후 2시)</th><th class="n">2차 (저녁)</th><th>최종 판정</th></tr></thead>
+            <tbody>
+              <tr><td>명찰 과태료를 300만원으로 (정답 100만원)</td><td class="n">0 / 10</td><td class="n f-bad">1 / 8</td><td class="f-bad">미처치 · 1/18</td></tr>
+              <tr><td>전자의무기록 침해 벌칙을 500만원으로 (정답 5년/5천만)</td><td class="n f-bad">2 / 5</td><td class="n f-ok">0 / 8</td><td class="f-ok">처치 완료</td></tr>
+              <tr><td>제21조③ 의무를 재량으로 반전</td><td class="n">0 / 5</td><td class="n f-bad">1 / 8</td><td class="f-bad">미처치 · 1/13</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout">
+          <span class="lbl">정정 — 이 문서의 초판이 틀렸다</span>
+          <p>1차 관측만 보고 <strong>두 건을 "종결"로 보고했다.</strong> 저녁에 처치 검증을 위해 같은 프로브를 <em>N=8로 한 번 더</em> 돌리자 둘 다 나왔다. 실제로는 <strong>저율 확률적 결함</strong>(각 1/18 = 5.6%, 1/13 = 7.7%)이었고 1차의 표본이 작아 못 잡았을 뿐이다.</p>
+          <p>이 문서 §05에 <em>"재현 0건은 '결함 없음'이 아니라 '이 표본 크기에서 미관측'이다"</em>라고 적어 놓고, <strong>같은 세션 안에서 그 문장을 스스로 어겼다.</strong> 두 종결 판정은 철회한다.</p>
+        </div>
+        <p>제21조③ 건은 정규식이 잡았으므로 원문을 직접 읽어 확인했다 — 위양성이 아니다. <em>"제③항: 환자의 동의를 받을 수 없는 상황에서도 <strong>특정한 경우에 한해</strong> … 허용한다"</em>로 의무를 재량으로 읽었다. 같은 답변이 뒤에서는 "허용해야 한다"로 쓰기도 해서, <strong>한 답변 안에서 표현이 흔들린다.</strong></p>
+      </div>
+    </div>
+
+    <div class="ev">
+      <div class="clock">14:30</div>
+      <div>
+        <h3>살아 있는 결함의 원인 규명 <span class="tag bad">탐지기 오류 ④</span></h3>
+        <p>재현되는 한 건을 파고들었다. 정답과 오답의 갈림은 <strong>항 하나</strong>였다.</p>
+<pre>제87조의2(벌칙) ②  … <b>제23조제3항</b> …  → 5년 이하 징역 / 5천만원   <b>← 정답</b>
+제90조(벌칙)      … <b>제23조제4항</b> …  → 500만원 이하 벌금        <span class="hi">← 모델이 고른 것</span></pre>
+        <p>같은 제23조인데 ③이냐 ④냐로 형량이 갈리고, 모델은 조번호만 보고 골랐다.</p>
+        <p>여기서 네 번째 탐지기 오류가 나왔다. 검색 결과를 출력하는 루프가 <strong>10건 중 8건째에서 크래시</strong>했는데, 나는 그 출력을 완전한 것으로 읽고 "검색 히트에 벌칙 조문이 하나도 없다"는 진단을 세웠다. 그 위에 "청크 경계가 조문 경계와 안 맞아 벌칙 텍스트가 흘러들었다"는 두 번째 진단을 쌓았다. <strong>둘 다 틀렸다.</strong> 못 본 2건이 바로 그 벌칙 조문이었다.</p>
+        <p>제대로 다시 재고 나서야 진짜 원인이 나왔다.</p>
+<pre>질의: "<b>전자의무기록</b>으로 진료기록부를 대체할 수 있는가?"
+        <span class="hi">  ^^^^</span>
+  금지·의무형 게이트의 '<b>의무</b>' 가 위치 2에서 매칭 → 문맥 '전자<span class="hi">의무</span>기록으로'</pre>
+        <div class="callout">
+          <span class="lbl">원인</span>
+          <p><strong>의무기록(medical record)은 이 시스템의 핵심 도메인 용어인데, 벌칙 근거를 붙이는 게이트가 그것을 "의무를 묻는 질의"로 읽는다.</strong> 단어 경계 없는 부분문자열 매칭이고, 이 프로젝트가 약물명 처리에서 이미 두 번 고친 클래스다.</p>
+          <p>연쇄는 이렇다. 게이트 오발동 → 묻지도 않은 벌칙 조문이 근거에 붙음 → 질의가 ③항도 ④항도 묻지 않으므로 항 불일치 필터는 설계대로 아무것도 버리지 않음(fail-open) → 모델이 근거에 있는 벌칙을 자발적으로 덧붙이며 잘못된 쪽을 고름.</p>
+        </div>
+        <p>처치는 좁다 — <code>의무</code> 매칭에서 <code>의무기록</code> 계열을 제외한다.</p>
+      </div>
+    </div>
+
+    <div class="ev">
+      <div class="clock">16:00<br>17:30</div>
+      <div>
+        <h3>처치 · 배포 · 검증 <span class="tag good">봉합</span></h3>
+        <p>의도 어휘를 세기 <strong>전에</strong> 도메인 복합어를 지우도록 고쳤다. 근거를 더 붙이는 게 아니라 붙이지 말았어야 할 곳에서 안 붙이는, <strong>좁히는 방향</strong>의 처치다.</p>
+<pre>_DUTY_MASK_RE = re.compile(r"(?:전자)?의무기록(?:시스템|사|실)?|의무실|의무관|의무장교")
+
+def _has_duty_intent(question):
+    return any(t in _DUTY_MASK_RE.sub(" ", question or "") for t in _DUTY_INTENT_TERMS)</pre>
+        <p>통제군 <strong>15/15 양방향</strong> — 진짜 의무 질의 8건은 전부 발동하고, 의무기록 질의 7건에서만 침묵한다. 게이트 실동작도 갈렸다: 문제 질의는 <code>backref 부착 없음</code>, <code>명찰 착용 의무는?</code>는 제89조·제90조 부착 유지.</p>
+        <p>배포 게이트 통과 — 회귀 <strong>1675 passed</strong>(기준선 +18), 스모크 <code>173/173 · 베이스라인 0 · 신규 실패 없음</code>.</p>
+        <p>회귀에는 <strong>전제도 함께 고정</strong>했다. 마스크 없는 원래 판정이 이 질의에서 걸린다는 것이 처치의 근거이므로, 어휘 목록이 바뀌어 그게 사라지면 테스트가 먼저 빨개져 근거 소멸을 알린다.</p>
+        <div class="callout key">
+          <span class="lbl">배포가 드러낸 별건</span>
+          <p><code>git pull</code>이 미추적 파일 충돌로 막혔고, 그 덕에 <strong>커밋된 A/B 하네스가 실제 실행본과 달랐다</strong>는 것을 발견했다. 레포엔 예산 교정 전(2048/8192)이, 서버엔 교정본(6144/16384)이 있었다 — <strong>커밋된 버전으로는 이 문서가 보고한 측정을 재현할 수 없는 상태였다.</strong> 실행본으로 맞춰 커밋했다.</p>
+        </div>
+        <p>처치 대상은 <strong>2/5 → 0/8</strong>로 사라졌다. 참 발생률이 40%로 유지됐다면 8회 무사고 확률은 1.7%이고, 여기에 기전이 결정적으로 확인된 것을 더해 판단했다. <strong>그리고 같은 실행이 앞서 종결로 판정한 두 건을 되살렸다</strong>(위 정정).</p>
+      </div>
+    </div>
+
+    <div class="ev">
+      <div class="clock">18:00<br>19:30</div>
+      <div>
+        <h3>저율 결함 처치 — 기전은 고쳤고 발생률은 못 쟀다 <span class="tag note">부분</span></h3>
+        <p>철회된 두 건 중 하나를 처치했다. 먼저 <strong>기준선</strong>을 N=40으로 잡고(id479 <strong>3/40 = 7.5%</strong>, 대조군 id461 2/40), 원인을 팠다.</p>
+<pre>제92조 청크 <b>1699자</b>  ·  생성 캡 <b>1500자</b>  ·  정답 <b>8. 제4조제5항…</b> 위치 <span class="hi">1523</span></pre>
+        <p><strong>원인은 생성이 아니라 절단이었다.</strong> 모델이 보는 것은 맨 위의 <code>① … 300만원</code>뿐이고 ③8호는 한 글자도 안 보인다. 보이는 유일한 금액을 쓴 것이다. 📌 캡을 600→1500으로 올려 같은 클래스를 봉합한 적이 있는데, 1699자짜리가 또 걸렸다 — <strong>캡 경쟁으로는 안 닫힌다</strong>(제21조는 4,091자다).</p>
+        <p>그래서 캡을 올리는 대신 <strong>필요한 조각만 되돌렸다</strong> — 검색된 행위 조문을 가리키는 호를, <strong>항 헤더와 함께</strong>, 원문 그대로. 형량은 호가 아니라 항 머리에 있으므로 헤더가 빠지면 처치가 무의미하다. 발동 표면은 40문항 중 <strong>1건</strong>이다.</p>
+        <div class="callout key">
+          <span class="lbl">기각된 선례를 어떻게 피했나</span>
+          <p>이 프로젝트는 형량 부기를 한 번 시도했다 <strong>기각</strong>했다 — 주석이 금액을 굵게 싣자 모델이 그대로 따라 써서 금지 신호가 6/12 → 12/12로 <strong>악화</strong>했다. 이번 것은 <strong>요약이 아니라 원문 조각</strong>이다. 모델이 읽는 것은 여전히 법령 원문이고, 한 일은 잘려 나간 부분을 제자리에 되돌린 것뿐이다.</p>
+        </div>
+        <div class="data">
+          <table>
+            <thead><tr><th></th><th class="n">처치 전</th><th class="n">처치 후</th></tr></thead>
+            <tbody>
+              <tr><td>id479 명찰 <span style="color:var(--ink-3)">(처치 대상)</span></td><td class="n">3/40 = 7.5%</td><td class="n">2/40 = 5.0%</td></tr>
+              <tr><td>id461 제21조③ <span style="color:var(--ink-3)">(대조군 · 미처치)</span></td><td class="n">2/40 = 5.0%</td><td class="n">3/40 = 7.5%</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout">
+          <span class="lbl">측정 설계가 틀렸다</span>
+          <p><strong>대조군이 정확히 반대 방향으로 같은 폭 움직였다.</strong> 그게 N=40의 노이즈 바닥이고, 처치군의 3→2는 그 안에 있다. 발생률로는 <strong>판정 불가</strong>다.</p>
+          <p>기준선을 잡을 때 "구간이 넓다"고 <em>스스로 적어 놓고도</em> 같은 N으로 처치 후를 재면 판정이 된다고 생각했다. <strong>넓은 구간은 처치 후에도 넓다.</strong> 7.5%의 절반을 검정력 80%로 잡으려면 팔당 <strong>N≈600</strong>이다.</p>
+        </div>
+        <p>✅ <strong>기전은 바뀌었다.</strong> 배포된 코드로 라이브 9회를 직접 호출하니 <code>100만원</code>·<code>제92조제3항</code>·<code>시정명령</code>이 나왔다 — 처치 전에는 <strong>원리적으로 불가능</strong>했다(해당 호가 컨텍스트에 한 글자도 없었으므로).</p>
+        <p>🔴 남은 2/40은 원문을 열어 확인했다. <strong>위양성이 아니다</strong> — 여전히 <code>제92조 … 300만원</code>으로 귀속하고 <code>100만원</code>·<code>시정명령</code>이 하나도 없다. 정답이 컨텍스트에 <em>있는데도</em> 그렇다 ⇒ <strong>남은 실패는 절단이 아니라 선택이다.</strong> 청크 맨 위의 <code>①300만원</code>이 되돌린 꼬리보다 위치상 우세하다.</p>
+      </div>
+    </div>
+
+    <div class="ev">
+      <div class="clock">20:00<br>21:30</div>
+      <div>
+        <h3>게이트가 차단됐고, 진단이 두 번 틀렸다 <span class="tag bad">여섯 번째</span></h3>
+        <p>마지막 릴리즈의 배포 게이트가 한국어 맞춤법 통제군에서 <strong>차단</strong>됐다(171/173). 세션을 마무리했다고 보고한 <em>뒤</em>에 알았다 — 게이트가 스모크 구간인 것만 확인하고 결과를 안 본 채 마무리했다.</p>
+        <div class="data">
+          <table>
+            <thead><tr><th>내가 한 말</th><th>사실</th></tr></thead>
+            <tbody>
+              <tr><td>"5/5 결정적으로 재현된다"</td><td><strong>다른 문장</strong>으로 잰 것이었다. 통제군의 정확한 입력으로는 <strong>44/44 통과</strong></td></tr>
+              <tr><td>"판정이 특정 표기만 요구한다 — 통제군을 넓히자"</td><td><strong>틀렸다.</strong> 넓혔으면 진짜 회귀를 덮을 뻔했다</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>진짜 원인은 <strong>로그에 그대로 있었다.</strong></p>
+<pre>16:30:05  Preloading default model: qwen2.5:14b        <span style="color:var(--ink-3)">← 상주 예열(2초 주기)</span>
+16:30:06  spellcheck 요청 → 7b(5.2GiB) 로드 시도
+          ollama: 7b·14b·외부 요청이 15.5GiB에서 서로 축출
+16:30:33  POST /api/generate 200 80,477B "node"         <span style="color:var(--ink-3)">← 외부 실트래픽 27초</span>
+16:30:36  <b>[ERROR] generate failed model=qwen2.5:7b: Read timed out</b>
+16:30:36  POST /api/korean/spellcheck <span class="hi">200</span> 324B          <span style="color:var(--ink-3)">← 실패인데 200</span></pre>
+        <p>맞춤법 함수는 LLM 실패 시 <code>success:false</code>·<code>error_detail</code>과 함께 <strong>원문을 200으로</strong> 돌려준다(교정 못 했으면 원문 보존 — 설계 의도이고 내부 호출자는 전부 <code>success</code>를 본다). <strong>하네스만 그걸 안 봤다.</strong> 그래서 "답을 못 받음"이 "교정 결과 누락"으로 위장됐다.</p>
+        <div class="callout">
+          <span class="lbl">이 문서의 §03·1번 항목이 그대로 재현됐다</span>
+          <p>아침에 고친 <strong>"200인데 빈 결과"</strong>와 같은 무성 실패 클래스다. 반복 결함 클래스 목록의 1번으로 적어 둔 그것이, 같은 날 저녁 다른 얼굴로 다시 나왔다.</p>
+          <p>기전(게이트 자기 부하 · VRAM 공존 불가)은 이 프로젝트가 <strong>하드웨어 전</strong>으로 남긴 것이라 처치하지 않았다. 대신 <strong>실패의 종류를 갈라 적게</strong> 했다 — 다시 겹쳐도 이제 위장은 안 된다.</p>
+        </div>
+        <p>모델도, 통제군도, 그날의 코드 변경도 무죄였다. 재실행 <strong>173/173 통과</strong>.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section>
+  <h2 class="sec"><span class="num">03</span>탐지기 오류 전수</h2>
+
+  <p>이 세션에서 측정 도구가 틀린 여섯 번을 한자리에 놓는다. 공통점은 <strong>여섯 다 그럴듯한 출력을 냈다</strong>는 것이다. 오류가 예외나 빈 결과로 나타났다면 즉시 알아챘을 것이다.</p>
+
+  <div class="data">
+    <table>
+      <thead>
+        <tr><th>#</th><th>도구</th><th>무엇을 잘못 읽었나</th><th>방향</th><th>무엇이 잡았나</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="n">①</td>
+          <td>레지스트리 다이제스트 대조</td>
+          <td>응답에 <code>Docker-Content-Digest</code> 헤더가 없어 전부 <code>?</code> → "다르다"로 계상</td>
+          <td class="f-bad">과대<br>37/37</td>
+          <td>일치 개수를 자기검증 지표로 출력에 넣음</td>
+        </tr>
+        <tr>
+          <td class="n">②</td>
+          <td>모델 계열 태그 조회</td>
+          <td>레지스트리가 <code>/tags/list</code>를 지원하지 않아 404 → "모델 없음"으로 읽을 뻔</td>
+          <td class="f-bad">과대</td>
+          <td><strong>존재가 확실한 모델</strong>을 같은 질의에 넣어 둠</td>
+        </tr>
+        <tr>
+          <td class="n">③</td>
+          <td>붕괴 판정기 (writing 경로)</td>
+          <td>절대 하한 10자를 두어 정상 짧은 출력(<code>"안녕하세요."</code> 6자)을 붕괴로 계상</td>
+          <td class="f-bad">과대<br>위양성</td>
+          <td>통제군 자기검증 — 입력 대비 비율로 교체</td>
+        </tr>
+        <tr>
+          <td class="n">⑤</td>
+          <td>법령명 오귀속 탐지기 v1</td>
+          <td>근거 <code>law_name</code>과 대조 — <strong>법령 본문이 다른 법을 정당하게 인용</strong>하는 경우를 못 봄</td>
+          <td class="f-bad">과대<br>7/40 → 0/40</td>
+          <td><strong>통제군을 걸고도 뚫림</strong> — 그 패턴이 통제군에 없었다</td>
+        </tr>
+        <tr>
+          <td class="n">⑥</td>
+          <td>맞춤법 재현 실험</td>
+          <td>통제군과 <strong>다른 문장</strong>으로 재고 "5/5 결정적 재현"이라 판정</td>
+          <td class="f-bad">과대<br>위양성</td>
+          <td>통제군의 정확한 입력으로 재측정 → 44/44 통과</td>
+        </tr>
+        <tr>
+          <td class="n">④</td>
+          <td>검색 히트 출력 루프</td>
+          <td>10건 중 8건째에서 크래시한 출력을 완전한 결과로 읽음</td>
+          <td class="f-bad">과소<br>2건 누락</td>
+          <td>프로토타입이 "이미 처리됨"을 보고해 모순이 드러남</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout key">
+    <span class="lbl">함께 볼 것</span>
+    <p>이 넷 외에, <strong>탐지기가 아니라 사람의 진단이 틀린 경우</strong>도 한 번 있었다. ④를 근거로 "청크 경계가 조문 경계와 안 맞다"는 2차 진단을 쌓았고, 그것도 틀렸다. <strong>틀린 측정 위에 세운 진단은 틀린 진단을 낳는다</strong> — 그리고 두 번째 것이 더 그럴듯했다.</p>
+  </div>
+</section>
+
+<section>
+  <h2 class="sec"><span class="num">04</span>논의</h2>
+
+  <h3>탐지기는 양방향으로 틀린다</h3>
+  <p>과대계상은 없는 결함에 처치를 붙이게 만들고, 과소계상은 있는 결함을 "0건"으로 만들어 처치를 취소시킨다. 이 프로젝트는 이전에 두 방향을 각각 한 번씩 겪었다 — 자격 허위 주장을 <code>의사|의료인</code>만으로 세어 5/50을 0/50으로 만든 적이 있고, 반대로 특정 조문 출현만으로 세어 정확한 서술까지 실패로 센 적도 있다. 이 세션은 <strong>하루 안에 양방향을 다 겪었다</strong>.</p>
+
+  <h3>통제군은 만들지 않아도 되는 경우가 많다</h3>
+  <p>가장 값싸게 통제군을 얻은 곳은 <strong>과거에 확정한 오답</strong>이었다. 13일 전 배치에서 실결함으로 판정하고 답변까지 저장해 둔 세 건은, 그대로 <em>라벨된 양성 표본</em>이다. 정답 문장을 직접 쓴 것이 음성 표본이 됐다. 새로 만든 것은 없다.</p>
+  <p>레지스트리 조사에서도 마찬가지였다 — 우리가 실제로 받아 쓰고 있는 모델이 곧 "존재가 확실한 표본"이다.</p>
+
+  <h3><em>p</em>값에도 노이즈 바닥이 있다</h3>
+  <p>동시 실행 사고가 만든 복제는 이 세션에서 가장 값진 관측이 됐다. 같은 답변을 두 번 채점했을 뿐인데 부호검정 <em>p</em>가 0.453과 0.031로 갈렸다. 동률이 많아 유효 표본이 6~7로 줄어든 상태에서는 한두 문항의 뒤집힘이 <em>p</em>를 통째로 옮긴다.</p>
+  <p>실무적 함의는 명확하다 — <strong>부호검정을 쓸 때는 동률을 제외한 유효 표본 수를 먼저 보고</strong>, 그것이 작으면 결론을 그 축 하나에 걸지 않는다. 이 세션의 기각 판정은 그래서 두 패스에서 모두 성립한 조건에만 무게를 뒀다.</p>
+
+  <h3>저율 결함은 발생률 A/B로 판정할 수 없다</h3>
+  <p>5~8% 대역 결함에 처치를 하고 전후를 각 N=40으로 쟀다. 처치군 3/40 → 2/40, 그런데 <strong>미처치 대조군은 2/40 → 3/40</strong>으로 반대 방향으로 같은 폭 움직였다. 처치의 몫을 읽을 수 없다.</p>
+  <p>판정 가능한 축은 둘뿐이다 — <strong>기전</strong>(정답이 컨텍스트에 있는가, 결정적으로 확인 가능)과 <strong>조건부 정확도</strong>(<em>답변이 그 항목을 언급할 때</em> 어느 값을 대는가 — 분모가 작아져 같은 N으로도 더 예민하다). 발생률은 셋째 축이 아니라 <em>가장 둔한</em> 축이다.</p>
+
+  <h3>집계 지표는 자기가 재도록 설계된 것만 잰다</h3>
+  <p>충실도 judge는 주장의 내용이 근거에 있는지를 본다. 그래서 법령명을 8건 틀리게 쓴 답변 중 7건이 만점을 받았다. <strong>"충실도가 높다"는 "내용이 근거와 맞다"이지 "출처를 옳게 댔다"가 아니다.</strong> 이 층은 원문을 열기 전까지 숫자로 나타나지 않는다.</p>
+  <p>같은 이유로 결측도 위험하다. 후보의 평균이 두 번 유리해진 것은 사고 문항 둘이 분모에서 빠졌기 때문이다 — <strong>실패가 결측이 되면 점수가 오른다.</strong></p>
+
+  <h3>기록된 전제는 조용히 낡는다</h3>
+  <p>이 세션은 두 개의 낡은 전제를 밟았다. 하나는 "Qwen 3.8은 오픈웨이트가 없다"였고(실제로는 나흘 전 공개), 다른 하나는 "heavy는 품질이 더 좋다"였다(N=40에서 재현 실패). 둘 다 <strong>당시에는 옳게 측정된 기록</strong>이었다.</p>
+  <p>대응으로 아카이브 문서 맨 앞에 <em>나중에 뒤집힌 주장</em> 색인을 뒀다. 아카이브 본문은 고쳐 쓰지 않았다 — 그것은 기록의 왜곡이다. 대신 인용하기 전에 볼 표를 앞에 놓았다.</p>
+</section>
+
+<section>
+  <h2 class="sec"><span class="num">05</span>결론과 남은 일</h2>
+
+  <p>판정 다섯 건 중 <strong>모델 구성을 바꾼 것은 하나도 없다.</strong> 신규 후보 둘은 기각됐고, 기존 heavy는 유지됐다. 바뀐 것은 <em>근거</em>와 <em>문서</em>다. 프로덕션 코드 변경은 전날 착수한 <code>writing.py</code> 두 지점의 배포 확인이 전부다.</p>
+
+  <p>이것이 실패한 하루라는 뜻은 아니다. <strong>바꾸지 않기로 한 결정도 측정이 뒷받침해야 한다</strong>는 것이 이 프로젝트의 규율이고, 이날 그 뒷받침이 세 건 갱신됐다.</p>
+  <p>프로덕션 코드 변경은 결국 둘이 됐다 — 전날 착수한 <code>writing.py</code> 두 지점, 그리고 저녁에 봉합한 <code>의무</code> 부분문자열 오매칭. 후자는 재현 <strong>2/5 → 0/8</strong>로 확인됐다.</p>
+
+  <h3>다음 순서</h3>
+  <ol>
+    <li><strong>저율 잔존 결함 두 건의 발생률 측정</strong> — 명찰 과태료(1/18)와 제21조③ 방향 반전(1/13). 5~8% 대역이라 <strong>N=30~50</strong>은 있어야 처치 전후를 판정할 수 있다. 지금 표본으로 처치를 설계하면 효과를 읽지 못한다.</li>
+    <li><strong>법령명 오귀속 탐지기</strong> — 현행 모델에도 타법명 등장이 2/40 있다. 충실도 judge가 이 축을 보지 않으므로 지금까지 한 번도 계상된 적이 없다. <em>탐지기를 통제군에 먼저 걸고</em> 세는 것이 순서다.</li>
+    <li><strong><s>괄호 한정 보존</s> — 🔴 취소됨.</strong> "기각된 후보가 조문 한정을 살렸고 현행이 놓쳤다"고 적었으나, 근거 원문을 열어 보니 <strong>반대였다</strong> — 제17조의2②는 형제자매를 <em>한정 없이</em> 나열하고, 후보가 붙인 한정은 <strong>제21조③4호(기록 열람)의 것</strong>이었다. 조문 간 조건 교차 오염이고, 처치했다면 현행 답변에 <strong>틀린 한정을 주입</strong>할 뻔했다. 📌 A/B 리뷰 에이전트의 결론을 <strong>근거 확인 없이 승격</strong>시킨 것이 원인이다.</li>
+    <li><strong>heavy tier의 실제 용처</strong> — 이 세션의 측정은 근거 기반 법령 독해 하나다. 창작·장문 추론·비전 축에서 이 tier가 값을 하는지는 미측정으로 남는다.</li>
+  </ol>
+
+  <div class="callout key">
+    <span class="lbl">이 문서가 말하지 않는 것</span>
+    <p>모든 A/B는 <strong>의료법 근거 기반 독해 과제 하나</strong>에서 수행됐다. "후보가 전반적으로 낫다/못하다"로 읽어서는 안 된다. 법령명 오귀속 8건은 답변 앞 400자 표면에서 눈으로 확인한 <strong>하한</strong>이다. 재현 0건인 항목은 "결함 없음"이 아니라 <strong>"이 표본 크기에서 미관측"</strong>이다.</p>
+  </div>
+</section>
+
+<div class="foot">
+  <b>산출물</b><br>
+  커밋 8건 · <code>f80a22d</code> 필터 순서 봉합 · <code>13d1913</code> 헤더 이관 · <code>dcdab42</code> A/B 사전 등록 · <code>779e40e</code> 지연 측정 도구 · <code>658eb2b</code> A/B 판정 · <code>7a2b9fb</code> v2.125.5 릴리즈 · <code>3015e6d</code> heavy 근거 철회<br><br>
+  <b>정본 문서</b><br>
+  <code>docs/RELEASE_v2.125.4.md</code> · <code>docs/RELEASE_v2.125.5.md</code> · <code>docs/01-plan/features/heavy-ab-qwen3vl-30b.plan.md</code> · <code>docs/DESIGN_SERVING_MODES.md</code> §2 · <code>docs/RELEASE_DIGEST.md</code><br><br>
+  <b>원자료</b><br>
+  <code>docs/01-plan/references/heavy-ab-qwen3vl-30b-result.json</code> · <code>docs/01-plan/references/heavy-ab-14b-vs-35b-n40-result.json</code>
+</div>
+
+</div>

@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ server_title }} — Login</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #0f1117;
+  color: #e4e4e7;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.card {
+  background: #1a1d27;
+  border: 1px solid #2a2d3a;
+  border-radius: 12px;
+  padding: 40px 36px;
+  width: 360px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+.logo {
+  text-align: center;
+  margin-bottom: 28px;
+}
+.logo h1 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #e4e4e7;
+  letter-spacing: -0.3px;
+}
+.logo p {
+  font-size: 12px;
+  color: #71717a;
+  margin-top: 4px;
+}
+.form-group {
+  margin-bottom: 16px;
+}
+label {
+  display: block;
+  font-size: 13px;
+  color: #a1a1aa;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+input {
+  width: 100%;
+  padding: 10px 13px;
+  background: #0f1117;
+  border: 1px solid #2a2d3a;
+  border-radius: 7px;
+  color: #e4e4e7;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+input:focus { border-color: #6366f1; }
+.btn {
+  width: 100%;
+  padding: 11px;
+  background: #6366f1;
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: background 0.15s;
+}
+.btn:hover { background: #4f52d1; }
+.error {
+  background: rgba(239,68,68,0.12);
+  border: 1px solid rgba(239,68,68,0.3);
+  border-radius: 7px;
+  padding: 10px 13px;
+  font-size: 13px;
+  color: #f87171;
+  margin-bottom: 16px;
+}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <h1>{{ server_title }}</h1>
+    <p>관리자 로그인</p>
+  </div>
+  {% if error %}
+  <div class="error">{{ error or '' }}</div>
+  {% endif %}
+  <form method="POST" action="{{ prefix }}/login">
+    <div class="form-group">
+      <label>아이디</label>
+      <input type="text" name="username" autocomplete="username" autofocus required>
+    </div>
+    <div class="form-group">
+      <label>비밀번호</label>
+      <input type="password" name="password" autocomplete="current-password" required>
+    </div>
+    <button class="btn" type="submit">로그인</button>
+  </form>
+</div>
+
+<!-- 학습 위저드 사이드바 -->
+<style>
+#wizardSidebar {
+  position: fixed; right: -380px; top: 0; width: 380px; height: 100vh;
+  background: var(--card); border-left: 1px solid var(--border);
+  z-index: 9999; transition: right 0.3s ease;
+  display: flex; flex-direction: column; box-shadow: -4px 0 20px rgba(0,0,0,0.3);
+}
+#wizardSidebar.open { right: 0; }
+#wizardSidebar .ws-header {
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+#wizardSidebar .ws-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
+#wizardSidebar .ws-step {
+  margin-bottom: 20px; padding: 16px; background: var(--surface);
+  border-radius: 10px; border-left: 3px solid var(--border); cursor: pointer;
+  transition: all 0.2s;
+}
+#wizardSidebar .ws-step.active { border-left-color: var(--accent); background: rgba(99,102,241,0.05); }
+#wizardSidebar .ws-step.done { border-left-color: #22c55e; }
+#wizardSidebar .ws-step .ws-num {
+  display: inline-flex; width: 24px; height: 24px; border-radius: 50%;
+  background: var(--border); color: var(--muted); font-size: 12px; font-weight: 700;
+  align-items: center; justify-content: center; margin-right: 8px;
+}
+#wizardSidebar .ws-step.active .ws-num { background: var(--accent); color: #fff; }
+#wizardSidebar .ws-step.done .ws-num { background: #22c55e; color: #fff; }
+#wizardSidebar .ws-step .ws-title { font-size: 14px; font-weight: 700; color: var(--text); }
+#wizardSidebar .ws-step .ws-desc { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.6; }
+#wizardSidebar .ws-step .ws-tip {
+  font-size: 11px; color: var(--accent); margin-top: 8px; padding: 8px 10px;
+  background: rgba(99,102,241,0.08); border-radius: 6px; line-height: 1.5;
+}
+#wizardSidebar .ws-step .ws-action {
+  margin-top: 10px; display: flex; gap: 6px;
+}
+#wizardSidebar .ws-step .ws-action button {
+  padding: 6px 14px; border-radius: 6px; font-size: 11px; border: none; cursor: pointer;
+}
+.ws-btn-primary { background: var(--accent); color: #fff; }
+.ws-btn-secondary { background: var(--surface); color: var(--muted); border: 1px solid var(--border) !important; }
+#wizardToggle {
+  position: fixed; right: 20px; bottom: 80px; z-index: 9998;
+  width: 56px; height: 56px; border-radius: 50%; background: var(--accent);
+  color: #fff; border: none; cursor: pointer; font-size: 24px;
+  box-shadow: 0 4px 15px rgba(99,102,241,0.4); display: flex; align-items: center; justify-content: center;
+  transition: transform 0.2s;
+}
+#wizardToggle:hover { transform: scale(1.1); }
+</style>
+
+<button id="wizardToggle" onclick="toggleWizardSidebar()" title="학습 가이드" style="display:none;">🧙</button>
+
+<div id="wizardSidebar">
+  <div class="ws-header">
+    <div>
+      <div style="font-size:16px;font-weight:700;color:var(--text);">🧙 학습 가이드</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px;">단계별로 따라하면 AI가 똑똑해져요</div>
+    </div>
+    <button onclick="toggleWizardSidebar()" style="background:none;border:none;color:var(--muted);font-size:24px;cursor:pointer;padding:4px 8px;border-radius:4px;hover:background:var(--surface);" title="닫기 (ESC)">✕</button>
+  </div>
+  <div class="ws-body">
+
+    <div class="ws-step active" id="wsStep1" onclick="wizardSidebarStep(1)">
+      <div><span class="ws-num">1</span><span class="ws-title">학습 재료 준비하기</span></div>
+      <div class="ws-desc">
+        AI에게 "이건 나쁜 글이야", "이건 괜찮은 글이야" 라고 알려주는 예시를 모아야 해요.
+        <br><br>
+        마치 아이에게 "이건 뜨거워, 만지면 안 돼" 라고 가르치는 것과 같아요.
+        예시가 많을수록 AI가 더 정확하게 판단합니다.
+      </div>
+      <div class="ws-tip">
+        💡 <b>최소 100건</b> 이상 필요해요.<br>
+        "차단할 글"과 "정상 글"을 골고루 넣어주세요.<br>
+        관리자가 판정을 수정하면 자동으로 모입니다.
+      </div>
+      <div class="ws-action">
+        <button class="ws-btn-primary" onclick="showWizardStep(1);toggleWizardSidebar();">재료 준비하러 가기 →</button>
+      </div>
+    </div>
+
+    <div class="ws-step" id="wsStep2" onclick="wizardSidebarStep(2)">
+      <div><span class="ws-num">2</span><span class="ws-title">AI 학습시키기</span></div>
+      <div class="ws-desc">
+        모아둔 재료로 AI를 학습시켜요.
+        <br><br>
+        AI가 재료를 반복해서 읽으면서 "이런 글은 차단해야 하는구나" 하고 배우게 됩니다.
+        사람이 공부할 때 교과서를 여러 번 읽는 것과 비슷해요.
+      </div>
+      <div class="ws-tip">
+        ⚡ <b>빠른 학습</b> (~10분): 처음 시도할 때<br>
+        ⚖️ <b>균형 학습</b> (~30분): 일반적으로 추천<br>
+        🎯 <b>정밀 학습</b> (~60분): 최고 정확도가 필요할 때<br>
+        <br>
+        💡 학습 중에도 기존 차단 기능은 계속 작동해요!
+      </div>
+      <div class="ws-action">
+        <button class="ws-btn-primary" onclick="showWizardStep(2);toggleWizardSidebar();">학습 시작하러 가기 →</button>
+      </div>
+    </div>
+
+    <div class="ws-step" id="wsStep3" onclick="wizardSidebarStep(3)">
+      <div><span class="ws-num">3</span><span class="ws-title">성적표 확인하기</span></div>
+      <div class="ws-desc">
+        학습이 끝나면 AI가 얼마나 잘 배웠는지 시험을 봐요.
+        <br><br>
+        100점 만점으로 점수가 나오고, <b>85점 이상</b>이면 합격이에요.
+        어떤 종류의 나쁜 글을 잘 찾는지, 어디서 실수하는지도 알 수 있어요.
+      </div>
+      <div class="ws-tip">
+        📊 <b>점수가 높을수록</b> 나쁜 글을 잘 찾아요<br>
+        📊 <b>정확도가 높을수록</b> 실수로 차단하는 일이 적어요<br>
+        <br>
+        ❌ 틀린 것들을 재료에 추가하면 다음에 더 잘 배워요!
+      </div>
+      <div class="ws-action">
+        <button class="ws-btn-primary" onclick="showWizardStep(3);toggleWizardSidebar();">성적표 보러 가기 →</button>
+      </div>
+    </div>
+
+    <div class="ws-step" id="wsStep4" onclick="wizardSidebarStep(4)">
+      <div><span class="ws-num">4</span><span class="ws-title">새 AI 적용하기</span></div>
+      <div class="ws-desc">
+        시험에 합격한 AI를 실제 서비스에 적용해요.
+        <br><br>
+        버튼 하나로 적용되고, 그 순간부터 게시글/댓글/블로그의
+        유해 콘텐츠 검사가 새로운 AI로 바뀌어요.
+      </div>
+      <div class="ws-tip">
+        🚀 적용 후에도 <b>언제든 이전 AI로 되돌릴 수 있어요</b><br>
+        <br>
+        💡 이 과정을 반복할수록 AI가 점점 똑똑해져요!<br>
+        재료 추가 → 학습 → 확인 → 적용 → 재료 추가 → ...
+      </div>
+      <div class="ws-action">
+        <button class="ws-btn-primary" onclick="showWizardStep(4);toggleWizardSidebar();">적용하러 가기 →</button>
+      </div>
+    </div>
+
+    <div style="padding:16px;background:var(--surface);border-radius:10px;margin-top:8px;">
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;">🔄 학습 사이클</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.8;">
+        ① 재료 모으기 (자동 + 수동)<br>
+        ② AI 학습시키기 (원클릭)<br>
+        ③ 성적표 확인 (85점 이상?)<br>
+        ④ 서비스에 적용<br>
+        ⑤ 사용하면서 실수 발견 → ①로<br>
+        <br>
+        <span style="color:var(--accent);">이 과정이 반복될수록<br>AI가 점점 정확해집니다! 🎯</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function toggleWizardSidebar() {
+  const sb = document.getElementById('wizardSidebar');
+  const isOpen = sb.classList.toggle('open');
+  // 오버레이
+  let ov = document.getElementById('wizardOverlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'wizardOverlay';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:9998;display:none;';
+    ov.onclick = toggleWizardSidebar;
+    document.body.appendChild(ov);
+  }
+  ov.style.display = isOpen ? 'block' : 'none';
+}
+// ESC 닫기
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    const sb = document.getElementById('wizardSidebar');
+    if (sb && sb.classList.contains('open')) toggleWizardSidebar();
+  }
+});
+
+function wizardSidebarStep(n) {
+  document.querySelectorAll('#wizardSidebar .ws-step').forEach((el,i) => {
+    el.className = 'ws-step' + (i+1===n ? ' active' : (i+1<n ? ' done' : ''));
+  });
+}
+
+// Training 탭 진입 시 사이드바 토글 버튼 표시 제어
+const _origSwitch = switchTab;
+switchTab = function(name) {
+  _origSwitch(name);
+  const btn = document.getElementById('wizardToggle');
+  if (btn) btn.style.display = name === 'training' ? 'flex' : 'none';
+};
+// 초기 숨김 (Training 탭이 아닐 때)
+function applyPermissions() {
+  const me = window.__USER__;
+  if (!me) return;
+  // 헤더에 사용자 표시
+  const hUser = document.getElementById('headerUser');
+  if(hUser) hUser.textContent = me.displayName + ' (' + me.role + ')';
+  if(me.role==='admin') return;
+  let perms = me.permissions || {};
+  perms.users = false; // Users 탭은 admin만
+  const tabs = document.querySelectorAll('.tab');
+  tabs.forEach(tab=>{
+    const oc=tab.getAttribute('onclick')||'';
+    const m=oc.match(/switchTab\('(\w+)'\)/);
+    if(m){
+      const key=m[1];
+      const allowed = perms[key]===true;
+      tab.style.display = allowed ? '' : 'none';
+      const panel = document.getElementById('panel-'+key);
+      if(panel && !allowed) panel.style.display='none';
+    }
+  });
+}
+// 즉시 + 지연 실행 (DOM 준비 보장)
+document.addEventListener('DOMContentLoaded', () => {
+  applyPermissions();
+  setTimeout(applyPermissions, 500);
+  const btn = document.getElementById('wizardToggle');
+  if (btn) btn.style.display = 'none';
+});
+</script>
+
+</body>
+</html>

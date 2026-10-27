@@ -1,0 +1,1601 @@
+{# WeRU.B AI Server — 관리 콘솔 템플릿
+   __author__: 신현묵 (Shin Hyunmook) <8508132+seanshin@users.noreply.github.com> · License: Proprietary — see LICENSE
+   Jinja 주석이라 렌더 결과(브라우저)에는 나가지 않는다 — 소스에만 남는다.
+   ⚠️ 관리 UI의 서빙 파일은 이것과 static/js/main.js뿐이다. 렌더가 예외면 app.py index()가 `[admin-ui]` 로그 + 500을 낸다
+      (v2.125.65까지는 로그 없이 3,744줄짜리 낡은 인라인 사본을 내보냈다 — v2.125.66에서 삭제). #}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ server_title }}</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<link rel=stylesheet href=static/css/admin.css>
+{{ user_script|safe }}
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>
+      {{ server_title }}
+      <span id="versionBadge" onclick="openSettings('system')"
+            style="font-size:11px;font-weight:500;color:var(--muted);background:var(--surface2);border:1px solid var(--border);
+                   border-radius:4px;padding:2px 7px;margin-left:8px;cursor:pointer;vertical-align:middle;"
+            title="버전 히스토리 보기">v-</span>
+    </h1>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span id="statusBadge" class="status-badge status-offline">checking...</span>
+      <span id="headerUser" style="font-size:11px;color:var(--muted);"><!--USER_DISPLAY--></span>
+      <button onclick="location.href=BASE+'/logout'" style="padding:4px 12px;border-radius:6px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-size:11px;cursor:pointer;">로그아웃</button>
+    </div>
+  </header>
+
+  <div id="systemInfoBadge" style="padding:4px 16px;background:var(--surface);border-bottom:1px solid var(--border);"></div>
+  <!-- 메인 메뉴 — 그룹 드롭다운(admin-menu-settings-cleanup Phase 1). 활성 표시는 data-tab 정확 일치(switchTab).
+       새 창 링크는 .tab이 아니라 .tab-ext — 내부 탭과 모양을 구분한다. -->
+  {#- 보일 탭: allowed_tabs(None=전부·admin). 역할 권한 숨김은 여기서 한다 — 예전 app.py의 문자열 치환은
+       render_template 결과에 덮여 한 번도 적용되지 않았다(D6). 서버 강제는 is_admin_request(역할 admin). -#}
+  {%- set A = allowed_tabs if allowed_tabs is defined and allowed_tabs is not none else
+        ['dashboard','queue','activity','logs','models','training','chat','generate','image','knowledge','settings','users'] -%}
+  {%- macro tab_item(name, label) -%}
+    {%- if name in A %}<button class="tab-item" data-tab="{{ name }}" onclick="switchTab('{{ name }}')">{{ label }}</button>{% endif -%}
+  {%- endmacro %}
+  <nav class="tabs" id="mainNav">
+    {% if 'dashboard' in A %}<button class="tab active" data-tab="dashboard" onclick="switchTab('dashboard')">Dashboard</button>{% endif %}
+    {% if 'queue' in A or 'activity' in A or 'logs' in A %}
+    <div class="tab-group" data-group="ops">
+      <button class="tab tab-group-btn" aria-haspopup="true" aria-expanded="false" onclick="toggleTabGroup(this)">운영<span class="tab-group-cur"></span> ▾</button>
+      <div class="tab-menu" role="menu">
+        {{ tab_item('queue', 'Queue') }}
+        {{ tab_item('activity', 'Activity') }}
+        {{ tab_item('logs', 'Logs') }}
+      </div>
+    </div>
+    {% endif %}
+    <div class="tab-group" data-group="models">
+      <button class="tab tab-group-btn" aria-haspopup="true" aria-expanded="false" onclick="toggleTabGroup(this)">모델<span class="tab-group-cur"></span> ▾</button>
+      <div class="tab-menu" role="menu">
+        {{ tab_item('models', 'Models') }}
+        {{ tab_item('training', 'Training') }}
+        <a class="tab-item tab-ext" href="model-manager" target="_blank" rel="noopener">Model Manager ↗</a>
+      </div>
+    </div>
+    {% if 'chat' in A or 'generate' in A or 'image' in A or 'knowledge' in A %}
+    <div class="tab-group" data-group="tools">
+      <button class="tab tab-group-btn" aria-haspopup="true" aria-expanded="false" onclick="toggleTabGroup(this)">도구<span class="tab-group-cur"></span> ▾</button>
+      <div class="tab-menu" role="menu">
+        {{ tab_item('chat', 'Chat') }}
+        {{ tab_item('generate', 'Generate') }}
+        {{ tab_item('image', 'Image') }}
+        {{ tab_item('knowledge', 'Knowledge') }}
+      </div>
+    </div>
+    {% endif %}
+    <div class="tab-group" data-group="domain">
+      <button class="tab tab-group-btn" aria-haspopup="true" aria-expanded="false" onclick="toggleTabGroup(this)">도메인 콘솔 ↗ ▾</button>
+      <div class="tab-menu" role="menu">
+        {% if not is_imac %}
+        <a class="tab-item tab-ext" href="admin-console/medical/dashboard/" target="_blank" rel="noopener">Medical AI ↗</a>
+        <a class="tab-item tab-ext" href="medical-training" target="_blank" rel="noopener">Medical Training ↗</a>
+        <a class="tab-item tab-ext" href="drug-pipeline" target="_blank" rel="noopener">Drug Pipeline ↗</a>
+        <a class="tab-item tab-ext" href="admin-console/hr-law/chat/" target="_blank" rel="noopener">HR Law ↗</a>
+        <a class="tab-item tab-ext" href="admin-console/game/dashboard/" target="_blank" rel="noopener">Game NPC ↗</a>
+        {% endif %}
+        <a class="tab-item tab-ext" href="orchestration-editor" target="_blank" rel="noopener">Orchestration ↗</a>
+      </div>
+    </div>
+    {% if 'settings' in A or 'users' in A %}
+    <div class="tab-group tab-group-right" data-group="admin">
+      <button class="tab tab-group-btn" aria-haspopup="true" aria-expanded="false" onclick="toggleTabGroup(this)">⚙ 설정<span class="tab-group-cur"></span> ▾</button>
+      <div class="tab-menu tab-menu-right" role="menu">
+        {{ tab_item('settings', 'Settings') }}
+        {{ tab_item('users', 'Users') }}
+      </div>
+    </div>
+    {% endif %}
+  </nav>
+
+  <!-- Dashboard -->
+  <div id="panel-dashboard" class="panel active">
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">Status</div>
+        <div class="stat-value" id="statStatus">--</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Installed Models</div>
+        <div class="stat-value" id="statModels">--</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Running Models</div>
+        <div class="stat-value" id="statRunning">--</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Total Size</div>
+        <div class="stat-value" id="statSize">--</div>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">Queue Pending</div>
+        <div class="stat-value" id="statQPending" style="color:var(--yellow)">--</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Queue Running</div>
+        <div class="stat-value" id="statQRunning" style="color:var(--accent)">--</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Completed</div>
+        <div class="stat-value" id="statQCompleted" style="color:var(--green)">--</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Failed</div>
+        <div class="stat-value" id="statQFailed" style="color:var(--red)">--</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Service Control</h3>
+      <div class="service-controls">
+        <button class="btn btn-green" onclick="serviceAction('start')">Start Ollama</button>
+        <button class="btn btn-yellow" onclick="serviceAction('restart')">Restart Ollama</button>
+        <button class="btn btn-danger" onclick="serviceAction('stop')">Stop Ollama</button>
+        <span style="border-left:1px solid var(--border);margin:0 8px;"></span>
+        <button class="btn btn-yellow" id="btnPause" onclick="toggleQueuePause()">Pause Queue</button>
+        <span id="queuePausedBadge" style="display:none;color:var(--yellow);font-size:12px;font-weight:600;">PAUSED</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Running Models</h3>
+      <table>
+        <thead><tr><th>Model</th><th>Size</th><th>VRAM</th><th>Until</th></tr></thead>
+        <tbody id="runningTable"><tr><td colspan="4" style="color:var(--muted)">No running models</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="card" id="imacLinkCard">
+      <h3>iMac 연계 (Apple Silicon Worker)</h3>
+      <div style="font-size:12px;line-height:1.9;">
+        <div>터널&nbsp;
+          <span id="ilT8586" style="color:var(--muted)">8586 ●</span>&nbsp;
+          <span id="ilT8587" style="color:var(--muted)">8587 ●</span>&nbsp;
+          <span id="ilT11435" style="color:var(--muted)">11435 ●</span>
+        </div>
+        <div>워커&nbsp;<span id="ilWorker" style="color:var(--muted)">--</span></div>
+        <div>위임&nbsp;<span id="ilDelegation" style="color:var(--muted)">--</span></div>
+        <div>실적&nbsp;<span id="ilStats" style="color:var(--muted)">--</span></div>
+        <div>오프로드&nbsp;<span id="ilOffload" style="color:var(--muted)">--</span></div>
+      </div>
+    </div>
+
+    <div class="card" id="orchestratorCard">
+      <h3>오케스트레이터 (Node Orchestration)</h3>
+      <div style="font-size:12px;line-height:1.9;">
+        <div>노드&nbsp;<span id="orNodes" style="color:var(--muted)">--</span></div>
+        <div>능력&nbsp;<span id="orCaps" style="color:var(--muted)">--</span></div>
+        <div>라우팅&nbsp;<span id="orRouting" style="color:var(--muted)">--</span></div>
+        <div>최근&nbsp;<span id="orRecent" style="color:var(--muted)">--</span></div>
+      </div>
+    </div>
+
+    <div class="card" id="medlawCorpusCard">
+      <h3>의료법 RAG 코퍼스</h3>
+      <div style="font-size:12px;line-height:1.9;">
+        <div>총량&nbsp;<span id="mlTotal" style="color:var(--muted)">--</span></div>
+        <div>구성&nbsp;<span id="mlOrigin" style="color:var(--muted)">--</span></div>
+        <div>법령&nbsp;<span id="mlLaws" style="color:var(--muted)">--</span></div>
+        <div>KHIDI 수집&nbsp;<span id="mlWatermark" style="color:var(--muted)">--</span></div>
+      </div>
+    </div>
+
+    <div class="card" id="drugDataCard">
+      <h3>약물 데이터 스택</h3>
+      <div style="font-size:12px;line-height:1.9;">
+        <div>약가(fee_codes)&nbsp;<span id="ddFee" style="color:var(--muted)">--</span></div>
+        <div>저가약 대체조제&nbsp;<span id="ddSub" style="color:var(--muted)">--</span></div>
+        <div>코드 크로스워크&nbsp;<span id="ddMaster" style="color:var(--muted)">--</span></div>
+        <div>DUR 병용금기&nbsp;<span id="ddDur" style="color:var(--muted)">--</span></div>
+      </div>
+    </div>
+
+    <div class="card" id="durSyncCard">
+      <h3>식약처 외부 연동 (DUR·e약은요)</h3>
+      <div style="font-size:12px;line-height:1.9;">
+        <div>키 구성&nbsp;<span id="dsConfigured" style="color:var(--muted)">--</span></div>
+        <div>마지막 동기화&nbsp;<span id="dsLast" style="color:var(--muted)">--</span></div>
+        <div>소스 상태&nbsp;<span id="dsSources" style="color:var(--muted)">--</span></div>
+      </div>
+    </div>
+
+    <div class="card" id="collectCard">
+      <h3>수집 로그·보고서 (HIRA·data.go.kr)</h3>
+      <div style="font-size:12px;line-height:1.9;">
+        <div>HIRA 소스&nbsp;<span id="clSources" style="color:var(--muted)">--</span></div>
+        <div>최근 7일 오류&nbsp;<span id="clErrors" style="color:var(--muted)">--</span></div>
+        <div>최신 보고서&nbsp;<span id="clReportTs" style="color:var(--muted)">--</span></div>
+        <div id="clSummary" style="color:var(--muted);white-space:normal;word-break:break-all;">--</div>
+        <div style="margin-top:6px;">
+          <button class="btn btn-sm" onclick="generateCollectReport()">보고서 즉시 생성</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="sanaCard">
+      <h3>SANA 이미지 (무스왑 fast-lane)</h3>
+      <div style="font-size:12px;line-height:1.9;">
+        <div>기능&nbsp;<span id="sanaEnabled" style="color:var(--muted)">--</span></div>
+        <div>사이드카&nbsp;<span id="sanaReach" style="color:var(--muted)">--</span></div>
+        <div>파이프라인&nbsp;<span id="sanaMode" style="color:var(--muted)">--</span></div>
+        <div>VRAM 여유&nbsp;<span id="sanaVram" style="color:var(--muted)">--</span></div>
+      </div>
+    </div>
+
+    <!-- 사전 적재(상주) 모델 — VRAM을 파인튜닝 등에 넘길지 결정 (v2.124.62) -->
+    <!-- 상주 모델 상태(읽기 전용). 조작 버튼은 설정 › 모델·엔진으로 옮겼다(v2.125.58).
+         ⚠️ 이 카드(#residencyCard)의 존재가 main.js에서 Settings 쪽 버튼 리스너를 붙이는 조건이다 — 지우지 말 것. -->
+    <div class="card" id="residencyCard">
+      <h3>사전 적재 모델 <span id="rsMode" style="font-size:11px;font-weight:400;color:var(--muted)">--</span></h3>
+      <div style="font-size:12px;line-height:1.9;">
+        <div>정책&nbsp;<span id="rsPolicy" style="color:var(--muted)">--</span></div>
+        <div>대상 모델&nbsp;<span id="rsModel" style="color:var(--muted)">--</span></div>
+        <div>현재 적재&nbsp;<span id="rsLoaded" style="color:var(--muted)">--</span></div>
+      </div>
+      <div style="font-size:11px;margin-top:8px;"><a class="settings-link" onclick="openSettings('engine')">설정 › 모델·엔진에서 변경 →</a></div>
+    </div>
+
+    <div class="card" id="heavyCard">
+      <h3>Heavy Tier (하이브리드 대형 모델)</h3>
+      <div style="font-size:12px;line-height:1.9;">
+        <div>기능&nbsp;<span id="hvEnabled" style="color:var(--muted)">--</span></div>
+        <div>heavy 모델&nbsp;<span id="hvModel" style="color:var(--muted)">--</span></div>
+        <div>상태&nbsp;<span id="hvRunning" style="color:var(--muted)">--</span></div>
+        <div>로드/오프로드&nbsp;<span id="hvLoaded" style="color:var(--muted)">--</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Throughput (24h)</h3>
+      <canvas id="chartThroughput" height="120"></canvas>
+    </div>
+
+    <div class="card">
+      <h3>Speed (tok/s, 24h)</h3>
+      <canvas id="chartSpeed" height="120"></canvas>
+    </div>
+
+    <!-- 성능 모니터링 (P4) — /api/stats/history 재사용(신규 폴링 없음) -->
+    <div class="card">
+      <h3>성능 모니터링 <span id="perfModel" style="font-size:11px;font-weight:400;color:var(--muted)">--</span></h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:10px;margin-bottom:12px;font-size:12px;">
+        <div>VRAM<br><b id="perfVram" style="font-size:15px;">--</b></div>
+        <div>GPU 온도<br><b id="perfTemp" style="font-size:15px;">--</b></div>
+        <div>지연 p95<br><b id="perfP95" style="font-size:15px;">--</b></div>
+        <div>에러율(5xx)<br><b id="perfErr" style="font-size:15px;">--</b></div>
+        <div>워커 스레드<br><b id="perfThreads" style="font-size:15px;">--</b></div>
+        <div>SSE 구독<br><b id="perfSse" style="font-size:15px;">--</b></div>
+        <div>워커 recycle<br><b id="perfRecycles" style="font-size:15px;">--</b></div>
+        <div>워커 uptime<br><b id="perfUptime" style="font-size:15px;">--</b></div>
+        <div>GPU 상주<br><b id="perfVramRatio" style="font-size:15px;">--</b></div>
+      </div>
+      <canvas id="chartGpu" height="120"></canvas>
+      <canvas id="chartLatency" height="120" style="margin-top:12px;"></canvas>
+    </div>
+
+    <!-- LLM 품질 평가 (eval Phase 4) — 야간 배치 결과, 페이지 로드 시 1회 -->
+    <div class="card" id="evalCard" style="display:none;">
+      <h3 style="display:flex;align-items:center;gap:8px;">LLM 품질 평가
+        <span id="evalTs" style="font-size:11px;font-weight:400;color:var(--muted)">--</span>
+        <button onclick="window.open(BASE+'/eval-monitor','evalMonitor','width=1320,height=920')"
+                style="margin-left:auto;padding:3px 10px;border-radius:5px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-size:11px;cursor:pointer;">실시간 모니터 ↗</button>
+      </h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:10px;font-size:12px;">
+        <div>품질 지수<br><b id="evalQi" style="font-size:15px;">--</b></div>
+        <div>충실도(RAG)<br><b id="evalFaith" style="font-size:15px;">--</b></div>
+        <div>환각 플래그<br><b id="evalHalluc" style="font-size:15px;">--</b></div>
+        <div>품질 overall<br><b id="evalOverall" style="font-size:15px;">--</b></div>
+        <div>정확성<br><b id="evalAcc" style="font-size:15px;">--</b></div>
+        <div>안전성<br><b id="evalSafe" style="font-size:15px;">--</b></div>
+        <div>한국어 비율<br><b id="evalKo" style="font-size:15px;">--</b></div>
+      </div>
+      <!-- v2.120.0 세밀 지표 — MiniCheck 교차검증 + 체크리스트(12 이진 항목) -->
+      <div id="evalFineRow" style="display:none;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:10px;font-size:12px;">
+        <div>교차검증 일치<br><b id="evalMcAgree" style="font-size:15px;">--</b></div>
+        <div>리뷰 트리거<br><b id="evalMcConflicts" style="font-size:15px;">--</b></div>
+        <div>strict 충실도<br><b id="evalStrict" style="font-size:15px;">--</b></div>
+        <div>체크리스트 통과<br><b id="evalChecks" style="font-size:15px;">--</b></div>
+      </div>
+      <div id="evalFailedChecks" style="display:none;font-size:11px;color:var(--warn,#f59e0b);margin-bottom:8px;"></div>
+      <!-- v2.120.2 관리 영역 — 세밀 지표 시계열 2×2 (야간 배치가 쌓일수록 충실) -->
+      <div id="evalSparks" style="display:none;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:8px;">
+        <div><div style="font-size:11px;color:var(--muted);margin-bottom:2px;">신뢰성 추세 — 충실도·strict·교차검증 일치</div>
+          <canvas id="sparkFaith" height="88"></canvas></div>
+        <div><div style="font-size:11px;color:var(--muted);margin-bottom:2px;">품질 차원 추세 (1~5)</div>
+          <canvas id="sparkQuality" height="88"></canvas></div>
+        <div><div style="font-size:11px;color:var(--muted);margin-bottom:2px;">체크리스트 통과율 추세</div>
+          <canvas id="sparkChecks" height="88"></canvas></div>
+        <div><div style="font-size:11px;color:var(--muted);margin-bottom:2px;">리뷰 트리거 추세 (건) — 환각 플래그·교차검증 불일치</div>
+          <canvas id="sparkTriggers" height="88"></canvas></div>
+      </div>
+      <!-- 질문별 세부 진단(최신 배치) — 토글 -->
+      <details id="evalDetail" style="display:none;margin-bottom:8px;">
+        <summary style="font-size:11px;color:var(--muted);cursor:pointer;">질문별 세부 진단</summary>
+        <table style="width:100%;font-size:11px;margin-top:6px;border-collapse:collapse;">
+          <thead><tr style="color:var(--muted);text-align:left;">
+            <th style="padding:2px 4px;">질문</th><th style="padding:2px 4px;">충실도</th>
+            <th style="padding:2px 4px;">주장</th><th style="padding:2px 4px;">교차검증</th>
+            <th style="padding:2px 4px;">품질</th><th style="padding:2px 4px;">체크 실패</th>
+          </tr></thead>
+          <tbody id="evalDetailBody"></tbody>
+        </table>
+      </details>
+      <div id="evalBench" style="font-size:11px;color:var(--muted);"></div>
+    </div>
+
+    {% if is_imac %}
+    <!-- Apple Silicon 실시간 모니터 -->
+    <div class="card" id="asPanel">
+      <h3 style="display:flex;align-items:center;gap:8px;">
+        Apple Silicon
+        <span id="asChipName" style="font-size:11px;font-weight:400;color:var(--muted);background:var(--surface2);padding:2px 8px;border-radius:4px;"></span>
+        <span id="asThermal" style="font-size:11px;font-weight:600;margin-left:auto;"></span>
+      </h3>
+
+      <!-- CPU -->
+      <div style="margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <span style="font-size:12px;color:var(--muted);">CPU</span>
+          <span id="asCpuTotal" style="font-size:13px;font-weight:600;"></span>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:6px;">
+          <div style="flex:1;background:var(--surface2);border-radius:4px;padding:6px 10px;">
+            <div style="font-size:10px;color:var(--muted);margin-bottom:2px;">P-Core (성능)</div>
+            <div id="asPCore" style="font-size:15px;font-weight:700;color:var(--accent);">--</div>
+          </div>
+          <div style="flex:1;background:var(--surface2);border-radius:4px;padding:6px 10px;">
+            <div style="font-size:10px;color:var(--muted);margin-bottom:2px;">E-Core (효율)</div>
+            <div id="asECore" style="font-size:15px;font-weight:700;color:var(--green);">--</div>
+          </div>
+        </div>
+        <div id="asCoreBar" style="display:flex;gap:2px;height:8px;border-radius:4px;overflow:hidden;"></div>
+      </div>
+
+      <!-- GPU -->
+      <div style="margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <span style="font-size:12px;color:var(--muted);">Metal GPU</span>
+          <span id="asGpuCores" style="font-size:11px;color:var(--muted);"></span>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <div style="flex:1;background:var(--surface2);border-radius:4px;padding:6px 10px;">
+            <div style="font-size:10px;color:var(--muted);margin-bottom:2px;">Renderer</div>
+            <div id="asGpuRenderer" style="font-size:15px;font-weight:700;color:#a78bfa;">--</div>
+          </div>
+          <div style="flex:1;background:var(--surface2);border-radius:4px;padding:6px 10px;">
+            <div style="font-size:10px;color:var(--muted);margin-bottom:2px;">Tiler</div>
+            <div id="asGpuTiler" style="font-size:15px;font-weight:700;color:#a78bfa;">--</div>
+          </div>
+          <div style="flex:1;background:var(--surface2);border-radius:4px;padding:6px 10px;">
+            <div style="font-size:10px;color:var(--muted);margin-bottom:2px;">Overall</div>
+            <div id="asGpuDevice" style="font-size:15px;font-weight:700;color:#a78bfa;">--</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Unified Memory -->
+      <div style="margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <span style="font-size:12px;color:var(--muted);">Unified Memory</span>
+          <span id="asMemLabel" style="font-size:13px;font-weight:600;"></span>
+        </div>
+        <div style="background:var(--surface2);border-radius:6px;height:10px;overflow:hidden;margin-bottom:6px;">
+          <div id="asMemBar" style="height:100%;border-radius:6px;background:var(--green);transition:width 0.5s,background 0.5s;width:0%;"></div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <span style="font-size:11px;color:var(--muted);">Wired: <span id="asMemWired" style="color:var(--fg);">--</span></span>
+          <span style="font-size:11px;color:var(--muted);">Active: <span id="asMemActive" style="color:var(--fg);">--</span></span>
+          <span style="font-size:11px;color:var(--muted);">Compressed: <span id="asMemComp" style="color:var(--fg);">--</span></span>
+          <span style="font-size:11px;color:var(--muted);">Free: <span id="asMemFree" style="color:var(--green);">--</span></span>
+        </div>
+      </div>
+
+      <!-- ANE + 스마트 캐싱 -->
+      <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;">
+        <div style="background:var(--surface2);border-radius:4px;padding:6px 12px;">
+          <div style="font-size:10px;color:var(--muted);margin-bottom:2px;">ANE</div>
+          <div id="asAne" style="font-size:13px;font-weight:700;color:#f59e0b;">--</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:4px;padding:6px 12px;">
+          <div style="font-size:10px;color:var(--muted);margin-bottom:2px;">Core ML</div>
+          <div id="asCoreMl" style="font-size:13px;font-weight:700;">--</div>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn" style="font-size:11px;padding:4px 10px;" onclick="showModelWarmDialog()">Model Warm</button>
+          <button class="btn" style="font-size:11px;padding:4px 10px;" onclick="loadCacheStatus()">Cache Status</button>
+        </div>
+      </div>
+      <div id="asCacheStatus" style="margin-top:8px;display:none;"></div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <h3>Medical AI</h3>
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-label">Medical APIs</div>
+          <div class="stat-value" style="color:var(--accent)">43</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Vision APIs</div>
+          <div class="stat-value" style="color:var(--accent)">6</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Quality Score</div>
+          <div class="stat-value" style="color:var(--green)">93</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Total APIs</div>
+          <div class="stat-value" style="color:var(--green)">272</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+        <a href="medical-training" target="_blank" class="btn" style="text-decoration:none;font-size:12px;">🧬 Fine-tuning</a>
+        <a href="docs#/Medical%20-%20Clinical" target="_blank" class="btn" style="text-decoration:none;font-size:12px;">📋 Medical API</a>
+        <a href="docs#/Vision" target="_blank" class="btn" style="text-decoration:none;font-size:12px;">🔬 Vision API</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Queue -->
+  <div id="panel-queue" class="panel">
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">Pending</div>
+        <div class="stat-value" id="qPending" style="color:var(--yellow)">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Running</div>
+        <div class="stat-value" id="qRunning" style="color:var(--accent)">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Completed</div>
+        <div class="stat-value" id="qCompleted" style="color:var(--green)">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Failed</div>
+        <div class="stat-value" id="qFailed" style="color:var(--red)">0</div>
+      </div>
+    </div>
+
+    <!-- Performance Stats -->
+    <div class="stats" id="perfStats" style="display:none;">
+      <div class="stat">
+        <div class="stat-label">Total Processed</div>
+        <div class="stat-value" id="perfTotal">-</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Total Tokens</div>
+        <div class="stat-value" id="perfTokens">-</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Avg Speed</div>
+        <div class="stat-value" id="perfSpeed">-</div>
+        <div class="stat-label" style="margin-top:2px;">tok/s</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Avg Duration</div>
+        <div class="stat-value" id="perfDuration">-</div>
+      </div>
+      <div class="stat" id="etaStat" style="display:none;">
+        <div class="stat-label">Queue ETA</div>
+        <div class="stat-value" id="perfETA" style="color:var(--yellow)">-</div>
+      </div>
+    </div>
+
+    <!-- Model Performance -->
+    <div class="card" id="modelPerfCard" style="display:none;">
+      <h3>Model Performance</h3>
+      <table>
+        <thead><tr><th>Model</th><th>Jobs</th><th>Total Tokens</th><th>Avg Tokens</th><th>Avg Time</th><th>Speed</th></tr></thead>
+        <tbody id="modelPerfTable"></tbody>
+      </table>
+    </div>
+
+    <!-- Recent Jobs -->
+    <div class="card">
+      <h3>Recent Jobs</h3>
+      <table>
+        <thead><tr><th>Status</th><th>Type</th><th>Model</th><th>Prompt</th><th>Response</th><th>Tokens</th><th>Duration</th></tr></thead>
+        <tbody id="recentJobsTable"><tr><td colspan="7" style="color:var(--muted)">Loading...</td></tr></tbody>
+      </table>
+    </div>
+
+    <!-- Quick Submit -->
+    <div class="card">
+      <h3>Quick Submit</h3>
+      <div style="margin-bottom:12px;">
+        <label>Model</label>
+        <select id="queueModel" style="width:auto;min-width:200px;"></select>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label>System Prompt</label>
+        <input type="text" id="queueSystem" placeholder="Optional system prompt...">
+      </div>
+      <div style="margin-bottom:12px;">
+        <label>Prompt</label>
+        <textarea id="queuePrompt" rows="3" placeholder="Enter prompt..."></textarea>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label>Options <span style="color:var(--muted);font-size:11px;">(temperature, top_p, num_predict)</span></label>
+        <div style="display:flex;gap:8px;">
+          <input type="number" id="queueTemp" placeholder="temp 0.7" step="0.1" min="0" max="2" style="width:100px;">
+          <input type="number" id="queueTopP" placeholder="top_p 0.9" step="0.1" min="0" max="1" style="width:100px;">
+          <input type="number" id="queueNumPredict" placeholder="max tokens" min="1" max="4096" style="width:120px;">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" onclick="quickSubmit()">Submit to Queue</button>
+      </div>
+    </div>
+
+    <!-- Batches -->
+    <div class="card">
+      <h3>Batches</h3>
+      <div style="margin-bottom:12px; display:flex; gap:8px;">
+        <button class="btn btn-outline btn-sm" onclick="loadBatches()">Refresh</button>
+        <button class="btn btn-danger btn-sm" onclick="purgeCompleted()">Purge Completed</button>
+      </div>
+      <table>
+        <thead><tr><th>Batch ID</th><th>Total</th><th>Progress</th><th>Created</th><th></th></tr></thead>
+        <tbody id="batchesTable"><tr><td colspan="5" style="color:var(--muted)">No batches</td></tr></tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <!-- Models -->
+  <div id="panel-models" class="panel">
+    <div class="card">
+      <h3>Pull Model</h3>
+      <div class="form-row">
+        <input type="text" id="pullModelName" placeholder="e.g. llama3.1:8b, gemma2:9b, qwen2.5:7b">
+        <button class="btn btn-primary" onclick="pullModel()">Pull</button>
+      </div>
+      <div id="pullProgress" style="display:none;">
+        <div class="progress-bar"><div class="progress-fill" id="pullProgressBar" style="width:0%"></div></div>
+        <div class="pull-status" id="pullStatusText"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Installed Models</h3>
+      <table>
+        <thead><tr><th>Name</th><th>Category</th><th>Size</th><th>Quant</th><th></th></tr></thead>
+        <tbody id="modelsTable"><tr><td colspan="5" style="color:var(--muted)">Loading...</td></tr></tbody>
+      </table>
+    </div>
+
+    <!-- 큐 기본 모델·모델 초기화 설정은 Settings로 이관(admin-menu-settings-cleanup Phase 2) -->
+    <!-- 원래 이 자리에 있던 두 카드는 설정 › 모델·엔진으로 옮겼다. 모델 행의 Init 버튼과 결과 영역(#initResultArea)은
+         모델별 동작이라 여기 남긴다 — Init은 서버에 저장된 초기화 설정을 쓰므로 폼이 다른 탭에 있어도 동작한다. -->
+    <div class="card settings-moved">
+      <div style="font-size:12px;color:var(--muted);">큐 기본 모델·모델 초기화(지역·언어·기본 지시문) 설정은
+        <a onclick="openSettings('engine')">설정 › 모델·엔진 →</a>으로 옮겼습니다. 모델 행의 <strong>Init</strong> 버튼은 그 설정으로 웜업합니다.</div>
+    </div>
+
+    <!-- Init Result Modal area -->
+    <div id="initResultArea" style="display:none;" class="card">
+      <h3>초기화 결과</h3>
+      <div id="initResultContent"></div>
+    </div>
+    <div class="card">
+      <h3>Model Catalog</h3>
+      <div class="cat-filters" id="catFilters">
+        <button class="cat-filter active" onclick="filterCatalog('all')">All</button>
+        <button class="cat-filter" onclick="filterCatalog('korean')">Korean</button>
+        <button class="cat-filter" onclick="filterCatalog('general')">General</button>
+        <button class="cat-filter" onclick="filterCatalog('code')">Code</button>
+        <button class="cat-filter" onclick="filterCatalog('small')">Small</button>
+        <button class="cat-filter" onclick="filterCatalog('multimodal')">Multimodal</button>
+        <button class="cat-filter" onclick="filterCatalog('embedding')">Embedding</button>
+      </div>
+      <div id="catalogList"></div>
+    </div>
+  </div>
+
+  <!-- Chat -->
+  <div id="panel-chat" class="panel">
+    <div class="card">
+      <div style="margin-bottom:12px;">
+        <label>Model</label>
+        <select id="chatModel" style="width:auto; min-width:200px;"></select>
+        <button class="btn btn-outline btn-sm" onclick="clearChat()" style="margin-left:8px;">Clear</button>
+      </div>
+      <div>
+        <label>System Prompt</label>
+        <input type="text" id="chatSystem" placeholder="Optional system prompt...">
+      </div>
+    </div>
+    <div class="card">
+      <div class="chat-messages" id="chatMessages">
+        <div style="color:var(--muted); text-align:center; padding:40px;">Start a conversation</div>
+      </div>
+      <div class="chat-input-row">
+        <textarea id="chatInput" placeholder="Type a message... (Shift+Enter for newline)" rows="1"
+                  onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();sendChat();}"></textarea>
+        <button class="btn btn-primary" onclick="sendChat()">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Generate -->
+  <div id="panel-generate" class="panel">
+    <div class="card">
+      <h3>One-shot Generate</h3>
+      <div style="margin-bottom:12px;">
+        <label>Model</label>
+        <select id="genModel" style="width:auto; min-width:200px;"></select>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label>System Prompt</label>
+        <input type="text" id="genSystem" placeholder="Optional system prompt...">
+      </div>
+      <div style="margin-bottom:12px;">
+        <label>Prompt</label>
+        <textarea id="genPrompt" rows="4" placeholder="Enter your prompt..."></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="doGenerate()">Generate</button>
+      <div id="genOutput" style="display:none; margin-top:16px;">
+        <label>Response</label>
+        <div style="background:var(--bg); border:1px solid var(--border); border-radius:var(--radius);
+                    padding:14px; white-space:pre-wrap; font-size:14px; line-height:1.7; max-height:400px; overflow-y:auto;"
+             id="genResult"></div>
+        <div style="margin-top:8px; font-size:12px; color:var(--muted);" id="genMeta"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <!-- Settings — 6개 절(admin-menu-settings-cleanup Phase 2). hash `#settings/<절>` · 한 번에 한 절만 보인다 -->
+  <div id="panel-settings" class="panel">
+    <div class="settings-layout">
+    <!-- 절 목록. data-section은 아래 <section>과 main.js SETTINGS_SECTIONS와 **1:1**이어야 한다(회귀가 검사).
+         절마다 불러오는 로더는 main.js showSettingsSection()에 있다 — 카드를 다른 절로 옮기면 로더 매핑도 옮길 것. -->
+    <nav class="settings-nav" id="settingsNav">
+      <button class="settings-nav-item" data-section="security" onclick="showSettingsSection('security')">계정·보안</button>
+      <button class="settings-nav-item" data-section="engine" onclick="showSettingsSection('engine')">모델·엔진</button>
+      <button class="settings-nav-item" data-section="alerts" onclick="showSettingsSection('alerts')">알림</button>
+      <button class="settings-nav-item" data-section="storage" onclick="showSettingsSection('storage')">저장소</button>
+      <button class="settings-nav-item" data-section="integration" onclick="showSettingsSection('integration')">연동·연결</button>
+      <button class="settings-nav-item" data-section="system" onclick="showSettingsSection('system')">시스템 정보</button>
+    </nav>
+    <div class="settings-body">
+      <!-- 계정·보안 — 관리자 비밀번호 · 인증 정책(완화는 서버 localhost만 저장, v2.125.54 D3) · API 키. 로더: loadSettings(→loadKeys) -->
+      <section class="settings-section" data-section="security">
+
+    <div class="card">
+      <h3>관리자 비밀번호 변경</h3>
+      <div style="max-width:360px;">
+        <div style="margin-bottom:8px;"><label>현재 비밀번호</label>
+          <input type="password" id="pwCurrent" placeholder="현재 비밀번호"></div>
+        <div style="margin-bottom:8px;"><label>새 비밀번호</label>
+          <input type="password" id="pwNew" placeholder="최소 8자 이상"></div>
+        <div style="margin-bottom:12px;"><label>새 비밀번호 확인</label>
+          <input type="password" id="pwConfirm" placeholder="새 비밀번호 재입력"></div>
+        <button class="btn btn-primary btn-sm" onclick="changeAdminPassword()">비밀번호 변경</button>
+        <span style="margin-left:12px;font-size:12px;color:var(--muted);">
+          변경 후 다시 로그인이 필요합니다.
+        </span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Authentication</h3>
+      <div style="margin-bottom:12px;display:flex;gap:16px;align-items:center;">
+        <label style="margin:0;display:flex;align-items:center;gap:6px;">
+          <input type="checkbox" id="cfgAuthEnabled"> API Key Authentication
+        </label>
+        <label style="margin:0;display:flex;align-items:center;gap:6px;">
+          <input type="checkbox" id="cfgLocalBypass"> Localhost Bypass
+        </label>
+      </div>
+      <div style="font-size:12px;color:var(--muted);">
+        API Key Auth: 외부 호출 시 Bearer 토큰 필요. Localhost Bypass: 로컬 접속은 인증 없이 허용.<br>
+        인증을 약하게 하는 변경(인증 끄기·Bypass 켜기)은 서버 localhost에서만 저장됩니다.
+      </div>
+      <button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="saveSettings()">인증 설정 저장</button>
+    </div>
+
+    <div class="card">
+      <h3>API Keys</h3>
+      <div style="margin-bottom:12px;">
+        <div class="form-row">
+          <input type="text" id="newKeyName" placeholder="Key name (e.g. ubuntu-server)">
+          <label style="display:flex;align-items:center;gap:6px;white-space:nowrap;font-size:13px;cursor:pointer;">
+            <input type="checkbox" id="newKeyNoExpiry"> Never expires
+          </label>
+          <button class="btn btn-primary" onclick="createKey()">Generate Key</button>
+        </div>
+      </div>
+      <div id="newKeyDisplay" style="display:none;margin-bottom:16px;padding:12px;background:rgba(34,197,94,0.1);border:1px solid var(--green);border-radius:var(--radius);">
+        <div style="font-size:12px;color:var(--green);margin-bottom:4px;">New key created - copy it now, it won't be shown again:</div>
+        <code id="newKeyValue" style="font-size:14px;word-break:break-all;"></code>
+      </div>
+      <table>
+        <thead><tr><th>Name</th><th>Prefix</th><th>Expires</th><th>Last Used</th><th>Status</th><th></th></tr></thead>
+        <tbody id="keysTable"><tr><td colspan="6" style="color:var(--muted)">Loading...</td></tr></tbody>
+      </table>
+    </div>
+      </section>
+      <!-- 모델·엔진 — 상주 모델 조작(대시보드에서 이관) · 큐 기본 모델·모델 초기화(Models에서 이관) · Ollama 엔진 설정(GPU 서버는 읽기 전용, D1).
+           로더: refreshResidency · loadDefaultModelConfig · loadInitConfig · loadPerfSettings -->
+      <section class="settings-section" data-section="engine">
+
+    <!-- 상주(사전 적재) 정책 — 조작부. 상태는 Dashboard 카드(#residencyCard)가 함께 보여 준다 -->
+    <div class="card">
+      <h3>상주 모델 (사전 적재)</h3>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">
+        GPU에 항상 올려 두는 모델입니다 — 첫 토큰 지연이 없는 대신 VRAM을 상시 점유합니다. 파인튜닝처럼 VRAM이 필요한 작업 전에는 '요청 시 탑재'로 바꾸거나 '지금 반납'.
+        <br>현재 상태는 Dashboard의 <strong>사전 적재 모델</strong> 카드에도 표시됩니다.
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+        <select id="rsSelect" style="font-size:12px;padding:4px;flex:1;min-width:150px;"></select>
+        <button id="rsToggle" class="btn" style="font-size:12px;padding:4px 10px;">전환</button>
+        <button id="rsUnload" class="btn" style="font-size:12px;padding:4px 10px;">지금 반납</button>
+      </div>
+      <div id="rsMsg" style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.6;"></div>
+    </div>
+    <!-- 큐 기본 모델 (Models 탭에서 이관) -->
+    <div class="card">
+      <h3>큐 기본 모델</h3>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">
+        큐·배치·파이프라인 요청에 model이 없을 때 쓰는 모델입니다.<br>
+        GPU 상주는 위 <strong>상주 모델</strong>이 담당합니다 — 여기서 저장해도 모델을 적재하지 않습니다.
+      </div>
+      <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+        <div>
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">큐 기본 모델 선택</label>
+          <select id="cfgDefaultModel" style="width:260px;">
+            <option value="">없음</option>
+          </select>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="saveDefaultModel()">Save</button>
+        <span id="defaultModelMsg" style="font-size:12px;color:var(--muted);"></span>
+      </div>
+      <div id="defaultModelStatus" style="margin-top:10px;font-size:12px;color:var(--muted);"></div>
+    </div>
+
+    <!-- 모델 초기화 (Models 탭에서 이관) -->
+    <div class="card">
+      <h3>모델 초기화</h3>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">
+        모델 초기화 시 주입되는 시스템 컨텍스트(현재 시각·국가·지역)와 명령어를 설정합니다.<br>
+        Models 탭 모델 행의 <strong>Init</strong> 버튼을 클릭하면 해당 모델을 해당 설정으로 웜업합니다.
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+        <div><label>국가</label><input type="text" id="initCountry" value="대한민국"></div>
+        <div><label>지역</label><input type="text" id="initRegion" value="서울"></div>
+        <div><label>시간대</label><input type="text" id="initTimezone" value="Asia/Seoul"></div>
+        <div><label>언어</label><input type="text" id="initLanguage" value="한국어"></div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label>기본 지시사항</label>
+        <textarea id="initBaseInstructions" rows="4" placeholder="모델에게 항상 적용할 기본 지시사항..."></textarea>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label>추가 명령어 세트</label>
+        <textarea id="initCustomCommands" rows="4" placeholder="도메인별 추가 명령어, 역할 정의, 제약 조건 등..."></textarea>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label>웜업 프롬프트 <span style="color:var(--muted);font-size:11px;">(초기화 후 모델에게 보내는 첫 질문)</span></label>
+        <input type="text" id="initWarmUpPrompt" placeholder="준비되었습니까? 간단히 인사해 주세요.">
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;">
+        <button class="btn btn-primary btn-sm" onclick="saveInitConfig()">설정 저장</button>
+        <button class="btn btn-outline btn-sm" onclick="previewInitPrompt()">시스템 프롬프트 미리보기</button>
+      </div>
+      <div id="initPreview" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;font-size:12px;font-family:monospace;white-space:pre-wrap;color:var(--muted);max-height:200px;overflow-y:auto;"></div>
+    </div>
+
+
+    <div class="card">
+      <h3>Ollama Performance</h3>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">
+        LLM 추론 속도를 조절하는 Ollama 엔진 설정입니다. 변경 후 <strong>Apply & Restart</strong>를 눌러야 적용됩니다.
+      </div>
+      <div id="perfSettings"></div>
+      <div style="margin-top:16px;display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-primary" id="perfApplyBtn" onclick="applyPerfSettings()">Apply & Restart Ollama</button>
+        <span id="perfMessage" style="font-size:12px;color:var(--muted);"></span>
+      </div>
+    </div>
+      </section>
+      <!-- 알림 — webhook 3종(시크릿: 서버가 {set,hint}로만 준다, D2) · 최근 알림 5건. 로더: loadSettings · loadSettingsAlertSummary -->
+      <section class="settings-section" data-section="alerts">
+
+    <div class="card">
+      <h3>Alerts</h3>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">
+        알림 채널 URL을 설정하면 장애 발생 시 자동으로 알림을 보냅니다.
+      </div>
+      <div style="margin-bottom:8px;"><label>Slack Webhook URL</label>
+        <input type="text" id="cfgSlack" placeholder="https://hooks.slack.com/services/..."><div id="cfgSlackState" class="secret-state"></div></div>
+      <div style="margin-bottom:8px;"><label>Discord Webhook URL</label>
+        <input type="text" id="cfgDiscord" placeholder="https://discord.com/api/webhooks/..."><div id="cfgDiscordState" class="secret-state"></div></div>
+      <div style="margin-bottom:8px;"><label>Generic Webhook URL</label>
+        <input type="text" id="cfgWebhook" placeholder="https://..."><div id="cfgWebhookState" class="secret-state"></div></div>
+      <button class="btn btn-primary btn-sm" onclick="saveAlertConfig()">Save Alert Config</button>
+    </div>
+    <div class="card">
+      <h3>최근 알림</h3>
+      <div id="settingsAlertSummary" style="font-size:12px;color:var(--muted);">Loading...</div>
+      <div style="font-size:11px;margin-top:8px;"><a class="settings-link" onclick="switchTab('logs')">전체 이력은 운영 › Logs →</a></div>
+    </div>
+      </section>
+      <!-- 저장소 — 이미지 보관 정책 · 오브젝트 스토리지 상태(읽기 전용). 로더: loadImageStorage · loadSettingsS3Status -->
+      <section class="settings-section" data-section="storage">
+
+    <div class="card">
+      <h3>Image Storage Management</h3>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">
+        생성된 이미지 파일 관리. 자동 정리는 매일 1회 실행됩니다.
+      </div>
+      <div id="imgStorageStats" style="margin-bottom:16px;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);font-size:13px;">
+        Loading...
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+        <div>
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">보관 기간 (일)</label>
+          <select id="imgRetentionDays" style="width:120px;">
+            <option value="0">무제한</option>
+            <option value="1">1일</option>
+            <option value="3">3일</option>
+            <option value="7" selected>7일</option>
+            <option value="14">14일</option>
+            <option value="30">30일</option>
+            <option value="90">90일</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">최대 보관 개수</label>
+          <select id="imgMaxCount" style="width:120px;">
+            <option value="0">무제한</option>
+            <option value="100">100개</option>
+            <option value="200">200개</option>
+            <option value="500" selected>500개</option>
+            <option value="1000">1,000개</option>
+            <option value="5000">5,000개</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">최대 보관 용량</label>
+          <select id="imgMaxSizeMb" style="width:120px;">
+            <option value="0">무제한</option>
+            <option value="500">500MB</option>
+            <option value="1000">1GB</option>
+            <option value="2000" selected>2GB</option>
+            <option value="5000">5GB</option>
+            <option value="10000">10GB</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-primary btn-sm" onclick="saveImageSettings()">Save Settings</button>
+        <button class="btn btn-danger btn-sm" onclick="cleanupImagesNow()">Cleanup Now</button>
+        <span id="imgStorageMessage" style="font-size:12px;color:var(--muted);"></span>
+      </div>
+    </div>
+    <div class="card">
+      <h3>오브젝트 스토리지 <span style="font-size:11px;font-weight:400;color:var(--muted)">읽기 전용</span></h3>
+      <div id="settingsS3Status" style="font-size:12px;color:var(--muted);">Loading...</div>
+    </div>
+      </section>
+      <!-- 연동·연결 — 접속 정보(하드코딩 제거 — 이 화면 주소·서버 바인드·유입 모드, v2.125.59). 로더: loadConfigOverview -->
+      <section class="settings-section" data-section="integration">
+
+    <div class="card">
+      <h3>접속 정보</h3>
+      <div id="settingsConnection" style="font-size:13px;line-height:2;">Loading...</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;">외부 주소는 지금 이 화면을 연 주소 기준 · 내부 주소는 서버가 실제로 받은 바인드 기준(예전엔 하드코딩).</div>
+    </div>
+    <!-- ⚠️ v2.125.59~62에는 여기 `</div>`가 하나 더 있었다 — 절 안의 여분 닫힘은 무시되지 않고 settings-body를 닫아
+         '시스템 정보' 절이 셋째 칸으로 밀리고 뒤 패널 6개가 .container 밖으로 빠졌다. 회귀: test_panels_and_settings_sections_nest_correctly -->
+      </section>
+      <!-- 시스템 정보 — 고급 설정 표(읽기 전용·코드 기본값 AST 스캔) · 버전 히스토리. 로더: loadConfigOverview · loadChangelog -->
+      <section class="settings-section" data-section="system">
+
+    <div class="card">
+      <h3>고급 설정 <span style="font-size:11px;font-weight:400;color:var(--muted)">읽기 전용 · config.json 전 키</span></h3>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">
+        현재값(시크릿은 마스킹) · 코드 기본값(소스에서 뽑음 — 여러 개면 곳마다 다르다는 뜻) · 바꾸는 곳.
+        값 편집은 여기서 하지 않습니다.
+      </div>
+      <input type="text" id="cfgOverviewFilter" placeholder="키 검색…" oninput="renderConfigOverview()" style="margin-bottom:8px;max-width:260px;">
+      <div style="overflow-x:auto;"><table>
+        <thead><tr><th>키</th><th>현재값</th><th>코드 기본값</th><th>바꾸는 곳</th></tr></thead>
+        <tbody id="cfgOverviewTable"><tr><td colspan="4" style="color:var(--muted)">Loading...</td></tr></tbody>
+      </table></div>
+    </div>
+    <div class="card" id="versionCard">
+      <h3>버전 히스토리</h3>
+      <div id="changelogContainer" style="margin-top:8px;">
+        <div style="color:var(--muted);font-size:13px;">Loading...</div>
+      </div>
+    </div>
+      </section>
+    </div>
+    </div>
+  </div>
+  <!-- Knowledge (RAG) -->
+  <div id="panel-knowledge" class="panel">
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">Indexed Documents</div>
+        <div class="stat-value" id="ragCount">-</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Embedding Model</div>
+        <div class="stat-value" style="font-size:16px;">nomic-embed-text</div>
+        <div class="stat-label" style="margin-top:2px;">768 dim</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>RAG Search</h3>
+      <div class="form-row">
+        <input type="text" id="ragQuery" placeholder="질문을 입력하세요...">
+        <button class="btn btn-primary" onclick="ragAsk()">Ask</button>
+        <button class="btn btn-outline" onclick="ragSearch()">Search Only</button>
+      </div>
+      <div id="ragAnswer" style="display:none;margin-top:16px;">
+        <div style="padding:16px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);">
+          <div style="font-size:12px;color:var(--accent);margin-bottom:8px;font-weight:600;">Answer</div>
+          <div id="ragAnswerText" style="font-size:14px;line-height:1.8;white-space:pre-wrap;"></div>
+          <div id="ragSources" style="margin-top:12px;font-size:12px;color:var(--muted);"></div>
+        </div>
+      </div>
+      <div id="ragResults" style="margin-top:12px;"></div>
+    </div>
+
+    <div class="card">
+      <h3>Add Document</h3>
+      <div style="margin-bottom:8px;">
+        <label>Document ID</label>
+        <input type="text" id="ragDocId" placeholder="post-123, wiki-456, ...">
+      </div>
+      <div style="margin-bottom:8px;">
+        <label>Content</label>
+        <textarea id="ragDocText" rows="4" placeholder="문서 내용을 입력하세요..."></textarea>
+      </div>
+      <div style="margin-bottom:8px;">
+        <label>Category <span style="color:var(--muted);font-size:11px;">(optional)</span></label>
+        <input type="text" id="ragDocCategory" placeholder="post, wiki, qna, ...">
+      </div>
+      <button class="btn btn-primary" onclick="ragIndexDoc()">Index Document</button>
+    </div>
+  </div>
+
+  <!-- Logs -->
+  <!-- Activity -->
+  <!-- Image Generation -->
+  <div id="panel-image" class="panel">
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+        <h3 style="margin:0;">Image Generation</h3>
+        <span id="imgModelBadge" style="font-size:12px;color:var(--muted);"></span>
+        <span id="imgStatusBadge" style="font-size:12px;padding:2px 8px;border-radius:4px;background:rgba(34,197,94,0.15);color:var(--green);display:none;">ComfyUI Online</span>
+        <span id="imgOfflineBadge" style="font-size:12px;padding:2px 8px;border-radius:4px;background:rgba(239,68,68,0.15);color:var(--red);display:none;">ComfyUI Offline</span>
+      </div>
+      <div style="display:grid;gap:12px;">
+        <div>
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">프롬프트</label>
+          <textarea id="imgPrompt" rows="3" style="width:100%;resize:vertical;"
+            placeholder="a beautiful mountain landscape at sunset, photorealistic, 8k"></textarea>
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+          <div>
+            <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">모델</label>
+            <select id="imgModel" style="width:260px;" onchange="onImageModelChange()">
+              <option value="flux-schnell">Loading...</option>
+            </select>
+            <div id="imgModelDesc" style="font-size:11px;color:var(--muted);margin-top:2px;"></div>
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">스타일</label>
+            <select id="imgStyle" style="width:180px;">
+              <option value="none">없음 (원본)</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">Width</label>
+            <select id="imgWidth" style="width:100px;">
+              <option value="512">512</option>
+              <option value="768">768</option>
+              <option value="1024" selected>1024</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">Height</label>
+            <select id="imgHeight" style="width:100px;">
+              <option value="512">512</option>
+              <option value="768">768</option>
+              <option value="1024" selected>1024</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">Steps</label>
+            <select id="imgSteps" style="width:80px;">
+              <option value="4" selected>4</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">Seed (비워두면 랜덤)</label>
+            <input type="number" id="imgSeed" style="width:140px;" placeholder="random">
+          </div>
+        </div>
+        <div id="imgNegativeRow" style="display:none;margin-top:8px;">
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">Negative Prompt (제외할 요소)</label>
+          <textarea id="imgNegative" rows="2" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);resize:vertical;"
+            placeholder="(worst quality:1.4), blurry, deformed, ugly"></textarea>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+          <button class="btn btn-primary" onclick="generateImage()" id="imgGenBtn">Generate</button>
+          <span id="imgGenStatus" style="font-size:13px;color:var(--muted);"></span>
+        </div>
+      </div>
+    </div>
+
+    <div id="imgResultCard" class="card" style="display:none;margin-top:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h4 style="margin:0;">Result</h4>
+        <a id="imgDownloadBtn" href="#" download style="font-size:13px;color:var(--accent);">Download</a>
+      </div>
+      <img id="imgResult" src="" alt="Generated image"
+           style="max-width:100%;border-radius:var(--radius);border:1px solid var(--border);">
+      <div id="imgResultMeta" style="margin-top:8px;font-size:12px;color:var(--muted);"></div>
+    </div>
+
+    <!-- 이미지 갤러리 -->
+    <div class="card" style="margin-top:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h4 style="margin:0;color:#e4e4e7;">📁 생성된 이미지 <span id="imgGalleryCount" style="font-size:12px;color:var(--muted);"></span></h4>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-sm" onclick="loadImageGallery()" style="font-size:11px;color:var(--muted);">🔄 새로고침</button>
+          <button class="btn btn-sm" onclick="cleanupImages()" style="font-size:11px;color:var(--muted);">🗑 정리</button>
+        </div>
+      </div>
+      <div id="imgDiskBar" style="margin-bottom:8px;"></div>
+      <div id="imgBulkBar" style="display:none;margin-bottom:8px;padding:8px 12px;background:var(--accent);background:rgba(99,102,241,0.1);border:1px solid var(--accent);border-radius:8px;display:none;align-items:center;gap:12px;">
+        <span id="imgSelectCount" style="font-size:12px;font-weight:600;color:var(--accent);">0장 선택</span>
+        <button onclick="deleteSelectedImages()" style="padding:4px 12px;background:#ef4444;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;">🗑 선택 삭제</button>
+        <button onclick="selectAllImages()" style="padding:4px 12px;background:var(--surface);color:var(--muted);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer;">전체 선택</button>
+        <button onclick="deselectAllImages()" style="padding:4px 12px;background:var(--surface);color:var(--muted);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer;">선택 해제</button>
+      </div>
+      <div id="imgGalleryStats" style="font-size:11px;color:var(--muted);margin-bottom:12px;"></div>
+      <div id="imgGallery" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;max-height:500px;overflow-y:auto;">
+        <div style="color:var(--muted);font-size:12px;grid-column:1/-1;text-align:center;padding:20px;">로딩 중...</div>
+      </div>
+    </div>
+
+    <!-- 이미지 미리보기 모달 -->
+    <div id="imgPreviewModal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.8);align-items:center;justify-content:center;cursor:pointer;" onclick="closeImgPreview()">
+      <div style="position:relative;max-width:90vw;max-height:90vh;" onclick="event.stopPropagation();">
+        <img id="imgPreviewImg" src="" style="max-width:90vw;max-height:85vh;border-radius:8px;">
+        <div style="display:flex;gap:8px;justify-content:center;margin-top:10px;">
+          <a id="imgPreviewDownload" href="#" download style="padding:6px 16px;background:var(--accent);color:#fff;border-radius:6px;text-decoration:none;font-size:12px;">⬇ 다운로드</a>
+          <button onclick="deletePreviewImage()" style="padding:6px 16px;background:#ef4444;color:#fff;border-radius:6px;border:none;cursor:pointer;font-size:12px;">🗑 삭제</button>
+          <button onclick="closeImgPreview()" style="padding:6px 16px;background:var(--surface);color:var(--muted);border-radius:6px;border:1px solid var(--border);cursor:pointer;font-size:12px;">닫기</button>
+        </div>
+        <div id="imgPreviewMeta" style="text-align:center;font-size:11px;color:var(--muted);margin-top:6px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel-activity" class="panel">
+    <!-- 뷰 전환 + 공통 컨트롤 -->
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
+      <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:6px;overflow:hidden;">
+        <button id="actViewBtnServers" class="btn btn-sm" style="border-radius:0;border:none;background:var(--accent);color:#fff;"
+                onclick="switchActView('servers')">서버별 통계</button>
+        <button id="actViewBtnLogs" class="btn btn-sm btn-outline" style="border-radius:0;border:none;"
+                onclick="switchActView('logs')">전체 로그</button>
+      </div>
+      <select id="actPeriod" style="width:auto;" onchange="refreshActView()">
+        <option value="1">1시간</option>
+        <option value="6">6시간</option>
+        <option value="24" selected>24시간</option>
+        <option value="72">3일</option>
+        <option value="168">7일</option>
+      </select>
+      <label style="margin:0;display:flex;align-items:center;gap:4px;font-size:13px;">
+        <input type="checkbox" id="actAutoRefresh" onchange="toggleActRefresh()"> 자동갱신 (30s)
+      </label>
+      <button class="btn btn-outline btn-sm" onclick="refreshActView()">새로고침</button>
+    </div>
+
+    <!-- ===== 서버별 통계 뷰 ===== -->
+    <div id="actServersView">
+      <!-- 요약 통계 -->
+      <div class="stats-grid" style="margin-bottom:12px;">
+        <div class="stat-card">
+          <div class="stat-label">서버 수</div>
+          <div class="stat-value" id="actSrvCount">-</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">총 호출 수</div>
+          <div class="stat-value" id="actSrvTotalCalls">-</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">평균 응답시간</div>
+          <div class="stat-value" id="actSrvAvgMs">-</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">총 오류</div>
+          <div class="stat-value" id="actSrvErrors">-</div>
+        </div>
+      </div>
+
+      <!-- 서버 카드 목록 -->
+      <div id="actServerCards"></div>
+    </div>
+
+    <!-- ===== 전체 로그 뷰 (숨김) ===== -->
+    <div id="actLogsView" style="display:none;">
+      <div class="card">
+        <!-- 필터 -->
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
+          <select id="actFilterMethod" style="width:auto;" onchange="loadActivity()">
+            <option value="">전체 메서드</option>
+            <option value="GET">GET</option>
+            <option value="POST">POST</option>
+            <option value="DELETE">DELETE</option>
+          </select>
+          <input type="text" id="actFilterPath" placeholder="경로 검색 (/api/queue...)"
+                 style="width:200px;" oninput="loadActivity()">
+          <select id="actFilterStatus" style="width:auto;" onchange="loadActivity()">
+            <option value="">전체 상태</option>
+            <option value="200">200 OK</option>
+            <option value="400">400 Bad Request</option>
+            <option value="401">401 Unauthorized</option>
+            <option value="403">403 Forbidden</option>
+            <option value="404">404 Not Found</option>
+            <option value="429">429 Rate Limit</option>
+            <option value="500">500 Error</option>
+          </select>
+          <input type="text" id="actFilterModel" placeholder="모델명..."
+                 style="width:140px;" oninput="loadActivity()">
+        </div>
+
+        <!-- Top paths -->
+        <div id="actTopPaths" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;"></div>
+
+        <!-- 로그 테이블 -->
+        <div style="overflow-x:auto;">
+          <table id="actTable">
+            <thead>
+              <tr>
+                <th style="width:150px;">시각</th>
+                <th style="width:60px;">Method</th>
+                <th>경로</th>
+                <th style="width:60px;">상태</th>
+                <th style="width:90px;">응답시간</th>
+                <th style="width:110px;">모델</th>
+                <th style="width:110px;">API 키</th>
+                <th style="width:100px;">IP</th>
+              </tr>
+            </thead>
+            <tbody id="actBody">
+              <tr><td colspan="8" style="color:var(--muted)">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top:8px;font-size:12px;color:var(--muted);" id="actPagination"></div>
+      </div>
+    </div>
+  </div>
+
+
+  <div id="panel-users" class="panel">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h3 style="margin:0;color:#e4e4e7;">👥 사용자 관리</h3>
+        <button class="btn btn-sm" onclick="showAddUser()" style="color:#e4e4e7;">+ 사용자 추가</button>
+      </div>
+      <div id="addUserForm" style="display:none;margin-bottom:16px;padding:14px;background:var(--surface);border-radius:8px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+          <div><label style="font-size:11px;color:var(--muted);">아이디</label><input id="nuUser" type="text" style="width:100%;font-size:12px;color:#e4e4e7;" /></div>
+          <div><label style="font-size:11px;color:var(--muted);">비밀번호</label><input id="nuPass" type="password" style="width:100%;font-size:12px;color:#e4e4e7;" /></div>
+          <div><label style="font-size:11px;color:var(--muted);">표시 이름</label><input id="nuName" type="text" style="width:100%;font-size:12px;color:#e4e4e7;" /></div>
+          <div><label style="font-size:11px;color:var(--muted);">역할</label><select id="nuRole" style="width:100%;font-size:12px;color:#e4e4e7;"><option value="admin">admin (전체 권한)</option><option value="operator">operator (설정 제외)</option><option value="viewer" selected>viewer (읽기만)</option></select></div>
+        </div>
+        <div style="display:flex;gap:8px;"><button class="btn btn-sm" onclick="createUser()" style="background:var(--accent);color:#fff;">추가</button><button class="btn btn-sm" onclick="document.getElementById('addUserForm').style.display='none'" style="color:var(--muted);">취소</button></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">
+        <b>admin</b>: 모든 메뉴 · <b>operator</b>: 대시보드+학습 · <b>viewer</b>: 대시보드만 (권한 버튼으로 개별 설정)
+      </div>
+      <table style="width:100%;font-size:12px;">
+        <thead><tr style="color:var(--muted);border-bottom:1px solid var(--border);"><th style="text-align:left;padding:6px;">#</th><th style="text-align:left;padding:6px;">아이디</th><th style="text-align:left;padding:6px;">이름</th><th style="text-align:center;padding:6px;">역할</th><th style="text-align:center;padding:6px;">상태</th><th style="text-align:center;padding:6px;">마지막 로그인</th><th style="text-align:center;padding:6px;">액션</th></tr></thead>
+        <tbody id="usersBody"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:16px;">로딩 중...</td></tr></tbody>
+      </table>
+    </div>
+    <!-- 권한 편집 모달 -->
+    <div id="permModal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.6);display:none;align-items:center;justify-content:center;">
+      <div style="background:var(--card);border-radius:12px;padding:24px;width:400px;max-width:90vw;">
+        <h4 style="margin-bottom:12px;color:#e4e4e7;" id="permTitle">권한 설정</h4>
+        <div id="permChecks" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:16px;"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button class="btn btn-sm" onclick="closePermModal()" style="color:var(--muted);">취소</button>
+          <button class="btn btn-sm" onclick="savePermissions()" style="background:var(--accent);color:#fff;">저장</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel-training" class="panel">
+    <!-- 대시보드 요약 -->
+    <div class="card" style="margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h3 style="margin:0;color:#e4e4e7;">🧠 AI 학습 센터</h3>
+        <button class="btn btn-sm" onclick="toggleAdvanced()" style="font-size:10px;background:var(--surface);border:1px solid var(--border);color:var(--muted);">⚙ 고급 설정</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px;">
+        <div style="text-align:center;padding:8px;background:var(--surface);border-radius:8px;">
+          <div id="wdModel" style="font-size:16px;font-weight:700;color:var(--text);">-</div>
+          <div style="font-size:10px;color:var(--muted);">현재 모델</div>
+        </div>
+        <div style="text-align:center;padding:8px;background:var(--surface);border-radius:8px;">
+          <div id="wdData" style="font-size:16px;font-weight:700;color:var(--text);">-</div>
+          <div style="font-size:10px;color:var(--muted);">학습 재료</div>
+        </div>
+        <div style="text-align:center;padding:8px;background:var(--surface);border-radius:8px;">
+          <div id="wdScore" style="font-size:16px;font-weight:700;color:var(--text);">-</div>
+          <div style="font-size:10px;color:var(--muted);">정확도</div>
+        </div>
+        <div style="text-align:center;padding:8px;background:var(--surface);border-radius:8px;">
+          <div id="wdLast" style="font-size:16px;font-weight:700;color:var(--text);">-</div>
+          <div style="font-size:10px;color:var(--muted);">마지막 학습</div>
+        </div>
+        <div style="text-align:center;padding:8px;background:var(--surface);border-radius:8px;">
+          <div id="wdGpu" style="font-size:16px;font-weight:700;color:var(--text);">-</div>
+          <div style="font-size:10px;color:var(--muted);">GPU</div>
+        </div>
+      </div>
+      <div id="wdGuide" style="font-size:12px;color:var(--muted);background:var(--surface);padding:8px 12px;border-radius:6px;border-left:3px solid var(--accent);">💡 로딩 중...</div>
+    </div>
+
+    <!-- 4단계 위저드 탭 -->
+    <div style="display:flex;gap:4px;margin-bottom:16px;">
+      <button class="btn btn-sm" id="wTab1" onclick="showWizardStep(1)" style="flex:1;padding:10px;border-radius:8px;background:var(--accent);color:#fff;font-size:12px;">① 재료 준비</button>
+      <button class="btn btn-sm" id="wTab2" onclick="showWizardStep(2)" style="flex:1;padding:10px;border-radius:8px;background:var(--surface);color:var(--muted);font-size:12px;">② 학습 실행</button>
+      <button class="btn btn-sm" id="wTab3" onclick="showWizardStep(3)" style="flex:1;padding:10px;border-radius:8px;background:var(--surface);color:var(--muted);font-size:12px;">③ 결과 확인</button>
+      <button class="btn btn-sm" id="wTab4" onclick="showWizardStep(4)" style="flex:1;padding:10px;border-radius:8px;background:var(--surface);color:var(--muted);font-size:12px;">④ 적용</button>
+    </div>
+
+    <!-- Step 1: 재료 준비 -->
+    <div id="wStep1" class="card" style="margin-bottom:16px;">
+      <h4 style="margin-bottom:12px;color:#e4e4e7;">① 재료 준비 — 학습에 사용할 데이터</h4>
+      <div style="margin-bottom:16px;padding:14px;background:var(--surface);border-radius:10px;border:1px solid var(--border);">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">📌 학습 대상 모델</div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <select id="wTargetModel" onchange="updateTargetModelInfo()" style="font-size:14px;font-weight:700;color:#e4e4e7;padding:6px 12px;border-radius:6px;background:var(--bg);border:1px solid var(--border);">
+                <option value="qwen2.5:1.5b">qwen2.5:1.5b</option>
+                <option value="qwen2.5:3b">qwen2.5:3b</option>
+                <option value="qwen2.5:7b">qwen2.5:7b</option>
+                <option value="qwen2.5:14b">qwen2.5:14b</option>
+              </select>
+              <button class="btn btn-sm" onclick="loadTargetModels()" style="font-size:10px;color:var(--muted);">🔄</button>
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div id="wTargetInfo" style="font-size:11px;color:var(--muted);">이 모델에 아래 재료를 학습시킵니다</div>
+            <div id="wTargetStatus" style="font-size:11px;color:var(--accent);margin-top:2px;"></div>
+          </div>
+        </div>
+      </div>
+      <div id="wDataStats" style="margin-bottom:16px;">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;">
+          <div style="text-align:center;padding:10px;background:var(--surface);border-radius:8px;">
+            <div id="wCollRaw" style="font-size:18px;font-weight:700;color:#e4e4e7;">-</div>
+            <div style="font-size:10px;color:var(--muted);">수집 (전체)</div>
+          </div>
+          <div style="text-align:center;padding:10px;background:var(--surface);border-radius:8px;">
+            <div id="wCollRefined" style="font-size:18px;font-weight:700;color:#22c55e;">-</div>
+            <div style="font-size:10px;color:var(--muted);">정제 완료</div>
+          </div>
+          <div style="text-align:center;padding:10px;background:var(--surface);border-radius:8px;">
+            <div id="wCollPending" style="font-size:18px;font-weight:700;color:#eab308;">-</div>
+            <div style="font-size:10px;color:var(--muted);">정제 대기</div>
+          </div>
+          <div style="text-align:center;padding:10px;background:var(--surface);border-radius:8px;">
+            <div id="wCollCorrections" style="font-size:18px;font-weight:700;color:#6366f1;">-</div>
+            <div style="font-size:10px;color:var(--muted);">보정 데이터</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <button class="btn btn-sm" onclick="runRefine()" style="background:var(--accent);color:#fff;font-size:11px;">🔄 정제 실행</button>
+          <span id="wRefineMsg" style="font-size:11px;color:var(--muted);line-height:28px;"></span>
+        </div>
+      </div>
+
+      <h5 style="margin-bottom:8px;color:var(--muted);">🎯 학습 방향</h5>
+      <!-- ⚠️ 이 카드(프리셋·가중치·시스템 프롬프트)는 **학습에 반영되지 않는다**. 2026-04-21에 화면만 만들어졌고
+           서버는 이 값을 저장한 적도 읽은 적도 없다(routes/training.py 판정 프롬프트는 하드코딩). 예전엔 저장 버튼이
+           '✅ 저장됨'을 띄웠다 — v2.125.64에서 저장 버튼을 끄고 안내를 붙였다(운영자 결정: 정직하게 표시). 실제 배선은 별도 과제. -->
+      <div id="wDirNotice" style="font-size:11px;color:var(--yellow);border:1px solid var(--yellow);border-radius:6px;padding:6px 10px;margin-bottom:8px;">
+        미구현 — 아래 방향 설정은 아직 학습에 반영되지 않으며 저장되지 않습니다(화면에서 미리 조정만 가능).
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px;" id="wPresets">
+        <div onclick="selectPreset('balanced')" id="preset-balanced" class="preset-card active" style="cursor:pointer;padding:10px;background:var(--surface);border:2px solid var(--accent);border-radius:8px;text-align:center;">
+          <div style="font-size:18px;">🛡️</div><div style="font-size:11px;font-weight:700;color:#e4e4e7;">종합 균형</div><div style="font-size:9px;color:var(--muted);">모든 유해 균등</div>
+        </div>
+        <div onclick="selectPreset('profanity')" id="preset-profanity" style="cursor:pointer;padding:10px;background:var(--surface);border:2px solid var(--border);border-radius:8px;text-align:center;">
+          <div style="font-size:18px;">🤬</div><div style="font-size:11px;font-weight:700;color:#e4e4e7;">욕설 특화</div><div style="font-size:9px;color:var(--muted);">우회 감지 집중</div>
+        </div>
+        <div onclick="selectPreset('spam')" id="preset-spam" style="cursor:pointer;padding:10px;background:var(--surface);border:2px solid var(--border);border-radius:8px;text-align:center;">
+          <div style="font-size:18px;">📢</div><div style="font-size:11px;font-weight:700;color:#e4e4e7;">스팸 차단</div><div style="font-size:9px;color:var(--muted);">광고/도배 강화</div>
+        </div>
+        <div onclick="selectPreset('hate')" id="preset-hate" style="cursor:pointer;padding:10px;background:var(--surface);border:2px solid var(--border);border-radius:8px;text-align:center;">
+          <div style="font-size:18px;">🔥</div><div style="font-size:11px;font-weight:700;color:#e4e4e7;">혐오 감지</div><div style="font-size:9px;color:var(--muted);">차별/혐오 강화</div>
+        </div>
+        <div onclick="selectPreset('corporate')" id="preset-corporate" style="cursor:pointer;padding:10px;background:var(--surface);border:2px solid var(--border);border-radius:8px;text-align:center;">
+          <div style="font-size:18px;">🏢</div><div style="font-size:11px;font-weight:700;color:#e4e4e7;">기업/공식</div><div style="font-size:9px;color:var(--muted);">엄격 차단</div>
+        </div>
+        <div onclick="selectPreset('news')" id="preset-news" style="cursor:pointer;padding:10px;background:var(--surface);border:2px solid var(--border);border-radius:8px;text-align:center;">
+          <div style="font-size:18px;">📰</div><div style="font-size:11px;font-weight:700;color:#e4e4e7;">뉴스/미디어</div><div style="font-size:9px;color:var(--muted);">허위정보 강화</div>
+        </div>
+        <div onclick="selectPreset('gaming')" id="preset-gaming" style="cursor:pointer;padding:10px;background:var(--surface);border:2px solid var(--border);border-radius:8px;text-align:center;">
+          <div style="font-size:18px;">🎮</div><div style="font-size:11px;font-weight:700;color:#e4e4e7;">게임/캐주얼</div><div style="font-size:9px;color:var(--muted);">가벼운 허용</div>
+        </div>
+        <div onclick="selectPreset('custom')" id="preset-custom" style="cursor:pointer;padding:10px;background:var(--surface);border:2px solid var(--border);border-radius:8px;text-align:center;">
+          <div style="font-size:18px;">✏️</div><div style="font-size:11px;font-weight:700;color:#e4e4e7;">직접 설정</div><div style="font-size:9px;color:var(--muted);">커스텀</div>
+        </div>
+      </div>
+
+      <div id="wWeightsPanel" style="margin-bottom:12px;padding:14px;background:var(--surface);border-radius:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <h5 style="margin:0;color:var(--muted);">⚖️ 카테고리 가중치</h5>
+          <span id="wPresetLabel" style="font-size:11px;color:var(--accent);">🛡️ 종합 균형</span>
+        </div>
+        <div style="display:grid;gap:6px;" id="wWeightSliders">
+          <div style="display:flex;align-items:center;gap:8px;"><span style="min-width:70px;font-size:11px;color:var(--muted);">🤬 욕설</span><input type="range" min="0" max="6" value="2" step="1" id="w-profanity" onchange="onWeightChange()" style="flex:1;accent-color:var(--accent);" /><span id="wv-profanity" style="min-width:30px;font-size:11px;color:#e4e4e7;text-align:right;">×1</span></div>
+          <div style="display:flex;align-items:center;gap:8px;"><span style="min-width:70px;font-size:11px;color:var(--muted);">📢 스팸</span><input type="range" min="0" max="6" value="2" step="1" id="w-spam" onchange="onWeightChange()" style="flex:1;accent-color:var(--accent);" /><span id="wv-spam" style="min-width:30px;font-size:11px;color:#e4e4e7;text-align:right;">×1</span></div>
+          <div style="display:flex;align-items:center;gap:8px;"><span style="min-width:70px;font-size:11px;color:var(--muted);">🔥 혐오</span><input type="range" min="0" max="6" value="2" step="1" id="w-hate_speech" onchange="onWeightChange()" style="flex:1;accent-color:var(--accent);" /><span id="wv-hate_speech" style="min-width:30px;font-size:11px;color:#e4e4e7;text-align:right;">×1</span></div>
+          <div style="display:flex;align-items:center;gap:8px;"><span style="min-width:70px;font-size:11px;color:var(--muted);">👊 괴롭힘</span><input type="range" min="0" max="6" value="2" step="1" id="w-harassment" onchange="onWeightChange()" style="flex:1;accent-color:var(--accent);" /><span id="wv-harassment" style="min-width:30px;font-size:11px;color:#e4e4e7;text-align:right;">×1</span></div>
+          <div style="display:flex;align-items:center;gap:8px;"><span style="min-width:70px;font-size:11px;color:var(--muted);">🔞 성적</span><input type="range" min="0" max="6" value="2" step="1" id="w-sexual" onchange="onWeightChange()" style="flex:1;accent-color:var(--accent);" /><span id="wv-sexual" style="min-width:30px;font-size:11px;color:#e4e4e7;text-align:right;">×1</span></div>
+          <div style="display:flex;align-items:center;gap:8px;"><span style="min-width:70px;font-size:11px;color:var(--muted);">📰 허위정보</span><input type="range" min="0" max="6" value="2" step="1" id="w-misinfo" onchange="onWeightChange()" style="flex:1;accent-color:var(--accent);" /><span id="wv-misinfo" style="min-width:30px;font-size:11px;color:#e4e4e7;text-align:right;">×1</span></div>
+          <div style="display:flex;align-items:center;gap:8px;"><span style="min-width:70px;font-size:11px;color:var(--muted);">⚕️ 자해</span><input type="range" min="0" max="6" value="2" step="1" id="w-self_harm" onchange="onWeightChange()" style="flex:1;accent-color:var(--accent);" /><span id="wv-self_harm" style="min-width:30px;font-size:11px;color:#e4e4e7;text-align:right;">×1</span></div>
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin-top:6px;">슬라이더: ×0.5(약화) ← ×1(보통) → ×2(강조) → ×3(집중)</div>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <h5 style="margin:0;color:var(--muted);">📝 AI 역할 (시스템 프롬프트)</h5>
+          <button class="btn btn-sm" onclick="resetPrompt()" style="font-size:10px;color:var(--muted);">기본값 복원</button>
+        </div>
+        <textarea id="wSystemPrompt" rows="4" style="width:100%;font-size:12px;color:#e4e4e7;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;resize:vertical;line-height:1.6;">당신은 커뮤니티 콘텐츠 모더레이터입니다.
+텍스트에서 유해 콘텐츠를 감지하되, 정상적인 의견 표현은 보호하세요.
+정치적 의견, 비판적 토론, 풍자, 감정 표현은 유해하지 않습니다.</textarea>
+        <div style="display:flex;gap:8px;margin-top:6px;">
+          <button class="btn btn-sm" disabled title="미구현 — 학습에 반영되지 않습니다" style="opacity:.5;cursor:not-allowed;">방향 설정 저장 (미구현)</button>
+          <span id="wDirMsg" style="font-size:11px;color:var(--accent);line-height:28px;"></span>
+        </div>
+      </div>
+
+      <h5 style="margin-bottom:8px;color:var(--muted);">📁 학습 자료실</h5>
+      <div id="wFileList" style="margin-bottom:12px;background:var(--surface);border-radius:8px;padding:12px;max-height:200px;overflow-y:auto;">
+        <div style="color:var(--muted);font-size:12px;">로딩 중...</div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;">
+        <label style="padding:6px 14px;background:var(--accent);color:#fff;border-radius:6px;cursor:pointer;font-size:12px;">
+          📤 파일 업로드
+          <input type="file" id="wFileInput" accept=".jsonl,.json,.csv,.tsv,.txt" style="display:none;" onchange="wizardUploadFile()" />
+        </label>
+        <span style="font-size:11px;color:var(--muted);">JSONL, CSV, TSV, TXT (최대 10MB)</span>
+      </div>
+      <h5 style="margin-bottom:8px;color:var(--muted);">직접 추가</h5>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <input id="wAddText" type="text" placeholder="예시 텍스트 입력..." style="flex:1;font-size:12px;color:#e4e4e7;" />
+        <select id="wAddLabel" style="font-size:12px;width:auto;color:#e4e4e7;"><option value="block">🚫 차단</option><option value="warn">⚠️ 경고</option><option value="allow">✅ 정상</option></select>
+        <button class="btn btn-sm" onclick="wizardAddSample()" style="color:#e4e4e7;">추가</button>
+      </div>
+      <h5 style="margin-bottom:8px;color:var(--muted);">AI 변형 생성</h5>
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <input id="wGenWord" type="text" placeholder="원본 단어 (예: 시발)" style="flex:1;font-size:12px;color:#e4e4e7;" />
+        <button class="btn btn-sm" onclick="wizardGenerate()" style="color:#e4e4e7;">🤖 자동 생성</button>
+      </div>
+      <div id="wGenResult" style="display:none;font-size:11px;color:var(--muted);margin-bottom:12px;"></div>
+      <div style="text-align:right;"><button class="btn btn-sm" onclick="showWizardStep(2)" style="background:var(--accent);color:#fff;">다음: ② 학습 실행 →</button></div>
+    </div>
+
+    <!-- Step 2: 학습 실행 -->
+    <div id="wStep2" class="card" style="margin-bottom:16px;display:none;">
+      <h4 style="margin-bottom:12px;color:#e4e4e7;">② 학습 실행 — AI에게 가르칩니다</h4>
+      <div style="margin-bottom:16px;">
+        <h5 style="margin-bottom:8px;color:var(--muted);">기본 모델 선택</h5>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <select id="wModelSelect" onchange="updateModelInfo()" style="flex:1;font-size:13px;color:#e4e4e7;padding:10px;border-radius:8px;background:var(--surface);border:1px solid var(--border);">
+            <option value="qwen2.5:1.5b">qwen2.5:1.5b (1.5GB, 빠름)</option>
+            <option value="qwen2.5:3b">qwen2.5:3b (2.5GB, 균형)</option>
+            <option value="qwen2.5:7b">qwen2.5:7b (4.4GB, 정확)</option>
+            <option value="qwen2.5:14b">qwen2.5:14b (8.4GB, 최고)</option>
+          </select>
+          <button class="btn btn-sm" onclick="loadOllamaModels()" style="color:var(--muted);font-size:11px;">🔄 새로고침</button>
+        </div>
+        <div id="wModelInfo" style="font-size:11px;color:var(--muted);margin-top:6px;">
+          💡 작은 모델일수록 학습이 빠르고 VRAM을 적게 사용합니다. 처음에는 1.5b를 추천합니다.
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;">
+        <div id="wMode1" onclick="selectMode('fast')" style="cursor:pointer;padding:16px;background:var(--surface);border:2px solid var(--border);border-radius:10px;text-align:center;">
+          <div style="font-size:20px;">⚡</div>
+          <div style="font-size:13px;font-weight:700;color:#e4e4e7;margin:4px 0;">빠른 학습</div>
+          <div style="font-size:11px;color:var(--muted);">~10분 · 가벼운 모델</div>
+        </div>
+        <div id="wMode2" onclick="selectMode('balanced')" style="cursor:pointer;padding:16px;background:var(--surface);border:2px solid var(--accent);border-radius:10px;text-align:center;">
+          <div style="font-size:20px;">⚖️</div>
+          <div style="font-size:13px;font-weight:700;color:#e4e4e7;margin:4px 0;">균형 학습</div>
+          <div style="font-size:11px;color:var(--accent);">✅ 추천 · ~30분</div>
+        </div>
+        <div id="wMode3" onclick="selectMode('precise')" style="cursor:pointer;padding:16px;background:var(--surface);border:2px solid var(--border);border-radius:10px;text-align:center;">
+          <div style="font-size:20px;">🎯</div>
+          <div style="font-size:13px;font-weight:700;color:#e4e4e7;margin:4px 0;">정밀 학습</div>
+          <div style="font-size:11px;color:var(--muted);">~60분 · 최고 정확도</div>
+        </div>
+      </div>
+      <div id="wPreCheck" style="font-size:12px;color:var(--muted);margin-bottom:16px;">확인 중...</div>
+      <div style="text-align:center;margin-bottom:12px;">
+        <button class="btn" onclick="wizardStartTraining()" style="padding:12px 40px;font-size:14px;background:var(--accent);color:#fff;border-radius:10px;">🚀 학습 시작</button>
+      </div>
+      <div id="wProgress" style="display:none;margin-bottom:12px;">
+        <div style="font-size:13px;color:#e4e4e7;margin-bottom:8px;">🧠 AI가 배우고 있습니다...</div>
+        <div style="background:var(--bg);border-radius:4px;height:10px;overflow:hidden;margin-bottom:8px;">
+          <div id="wProgressBar" style="height:100%;background:var(--accent);border-radius:4px;width:0%;transition:width 1s;"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);">
+          <span id="wProgressText">준비 중...</span>
+          <span id="wProgressEta"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: 결과 확인 -->
+    <div id="wStep3" class="card" style="margin-bottom:16px;display:none;">
+      <h4 style="margin-bottom:12px;color:#e4e4e7;">③ 결과 확인 — 학습 성적표</h4>
+      <div id="wResult" style="margin-bottom:16px;">학습 완료 후 확인 가능합니다.</div>
+      <div id="wDiagnosis" style="display:none;margin-bottom:16px;"></div>
+      <div id="wMisclass" style="display:none;margin-bottom:16px;"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn btn-sm" onclick="downloadReport()" style="color:var(--muted);">📥 리포트 다운로드</button>
+        <button class="btn btn-sm" onclick="downloadMisclass()" style="color:var(--muted);">📥 오분류 CSV</button>
+        <button class="btn btn-sm" onclick="showWizardStep(4)" style="background:var(--accent);color:#fff;">다음: ④ 적용 →</button>
+      </div>
+    </div>
+
+    <!-- Step 4: 적용 -->
+    <div id="wStep4" class="card" style="margin-bottom:16px;display:none;">
+      <h4 style="margin-bottom:12px;color:#e4e4e7;">④ 적용 — 새 AI를 서비스에 반영</h4>
+      <div id="wDeploy" style="margin-bottom:16px;">학습 완료 후 적용 가능합니다.</div>
+    </div>
+
+    <!-- 고급 설정 (숨김) -->
+    <div id="wAdvanced" class="card" style="display:none;margin-bottom:16px;">
+      <h4 style="margin-bottom:12px;color:#e4e4e7;">⚙ 고급 설정</h4>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:400px;">
+        <label style="font-size:11px;color:var(--muted);">허용 시간:</label><input id="cfgHours" type="text" value="00-06" style="font-size:12px;color:#e4e4e7;" />
+        <label style="font-size:11px;color:var(--muted);">GPU 최대 %:</label><input id="cfgGpuMax" type="number" value="80" style="font-size:12px;color:#e4e4e7;" />
+        <label style="font-size:11px;color:var(--muted);">자동 트리거:</label><input id="cfgThreshold" type="number" value="50" style="font-size:12px;color:#e4e4e7;" />
+        <label style="font-size:11px;color:var(--muted);">최대 시간(분):</label><input id="cfgMaxDur" type="number" value="120" style="font-size:12px;color:#e4e4e7;" />
+        <label style="font-size:11px;color:var(--muted);">배포 기준:</label><input id="cfgMinF1" type="number" value="85" style="font-size:12px;color:#e4e4e7;" />
+      </div>
+      <button class="btn btn-sm" style="margin-top:8px;color:#e4e4e7;" onclick="saveTrainingConfig()">설정 저장</button>
+      <h5 style="margin:12px 0 8px;color:var(--muted);">학습 이력</h5>
+      <table style="width:100%;font-size:11px;"><thead><tr style="color:var(--muted);"><th>#</th><th>상태</th><th>모델</th><th>점수</th><th>재료</th><th>일시</th><th>액션</th></tr></thead>
+      <tbody id="trainingRuns"><tr><td colspan="7" style="text-align:center;color:var(--muted);">학습 이력 없음</td></tr></tbody></table>
+    </div>
+
+    <!-- CLI 어시스턴트 -->
+    <div class="card" style="margin-top:0;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <h3 style="margin:0;color:#e4e4e7;">🤖 Content Safety 어시스턴트</h3>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;border-bottom:1px solid var(--border);padding-bottom:10px;">
+        <button class="btn btn-sm" style="font-size:11px;padding:4px 12px;background:var(--surface);border:1px solid var(--border);color:var(--text);" onclick="cliCmd('상태')">📊 상태</button>
+        <button class="btn btn-sm" style="font-size:11px;padding:4px 12px;background:var(--surface);border:1px solid var(--border);color:var(--text);" onclick="cliCmd('패턴 테스트 ㅅㅂ 진짜')">🔍 패턴 테스트</button>
+        <button class="btn btn-sm" style="font-size:11px;padding:4px 12px;background:var(--surface);border:1px solid var(--border);color:var(--text);" onclick="cliCmd('학습 통계')">📈 학습 통계</button>
+        <button class="btn btn-sm" style="font-size:11px;padding:4px 12px;background:var(--surface);border:1px solid var(--border);color:var(--text);" onclick="cliCmd('학습 이력')">📋 학습 이력</button>
+        <button class="btn btn-sm" style="font-size:11px;padding:4px 12px;background:var(--surface);border:1px solid var(--border);color:var(--text);" onclick="cliCmd('GPU 상태')">🖥 GPU</button>
+        <button class="btn btn-sm" style="font-size:11px;padding:4px 12px;background:var(--surface);border:1px solid var(--border);color:var(--text);" onclick="cliCmd('테스트 시발 진짜 짜증나')">🧪 판정 테스트</button>
+        <button class="btn btn-sm" style="font-size:11px;padding:4px 12px;background:var(--surface);border:1px solid var(--border);color:var(--text);" onclick="cliCmd('모델 목록')">📦 모델</button>
+        <button class="btn btn-sm" style="font-size:11px;padding:4px 12px;background:var(--surface);border:1px solid var(--border);color:var(--text);" onclick="cliCmd('모델 실행')">🚀 실행 모델</button>
+        <button class="btn btn-sm" style="font-size:11px;padding:4px 12px;background:var(--surface);border:1px solid var(--border);color:var(--text);" onclick="cliCmd('큐 상태')">📨 큐</button>
+        <button class="btn btn-sm" style="font-size:11px;padding:4px 12px;background:var(--surface);border:1px solid var(--border);color:var(--text);" onclick="cliCmd('서비스 상태')">🔧 서비스</button>
+      </div>
+      <div id="cliOutput" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:16px;font-size:13px;color:#e4e4e7;max-height:420px;overflow-y:auto;white-space:pre-wrap;min-height:120px;line-height:1.7;margin-bottom:12px;">🤖 Content Safety 어시스턴트 준비 완료.
+명령어를 입력하거나 위 버튼을 클릭하세요. '도움말' 입력 시 전체 명령어 확인.</div>
+      <div style="display:flex;gap:8px;align-items:center;border:1px solid var(--border);border-radius:10px;padding:4px 4px 4px 14px;background:var(--surface);">
+        <input id="cliInput" type="text" placeholder="명령어 입력... 또는 자유 질문" style="flex:1;border:none;background:transparent;font-size:13px;color:#e4e4e7;outline:none;padding:8px 0;" onkeydown="if(event.key==='Enter'&&!event.isComposing)cliRun()" />
+        <button onclick="cliRun()" style="width:36px;height:36px;border-radius:8px;background:#6366f1;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel-logs" class="panel">
+    <div class="card">
+      <div style="margin-bottom:12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <label style="margin:0;">Source:</label>
+        <select id="logSource" style="width:auto;" onchange="loadLogs()">
+          <option value="ollama">Ollama Engine</option>
+          <option value="queue">Queue Worker</option>
+          <option value="watchdog">Watchdog</option>
+        </select>
+        <label style="margin:0;">Lines:</label>
+        <select id="logLines" style="width:auto;" onchange="loadLogs()">
+          <option value="50">50</option>
+          <option value="100" selected>100</option>
+          <option value="300">300</option>
+        </select>
+        <label style="margin:0;">Filter:</label>
+        <select id="logLevel" style="width:auto;" onchange="filterLogContent()">
+          <option value="">All</option>
+          <option value="ERROR">ERROR</option>
+          <option value="WARNING">WARNING</option>
+          <option value="INFO">INFO</option>
+        </select>
+        <button class="btn btn-outline btn-sm" onclick="loadLogs()">Refresh</button>
+      </div>
+      <div class="log-viewer" id="logContent">Loading...</div>
+    </div>
+
+    <div class="card">
+      <h3>Alert History</h3>
+      <table>
+        <thead><tr><th>Time</th><th>Level</th><th>Title</th><th>Channel</th></tr></thead>
+        <tbody id="alertsTable"><tr><td colspan="4" style="color:var(--muted)">No alerts</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal for job detail -->
+<div id="jobModal" style="display:none;"></div>
+
+<!-- Confirm modal (replaces browser confirm()) -->
+<div id="confirmModal" style="display:none;">
+  <div class="modal-overlay">
+    <div class="modal" style="max-width:360px;">
+      <h3 id="confirmTitle">확인</h3>
+      <p id="confirmMsg" style="color:var(--muted);font-size:14px;margin-bottom:20px;"></p>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn btn-outline btn-sm" onclick="closeConfirm(false)">취소</button>
+        <button class="btn btn-danger btn-sm" id="confirmOkBtn" onclick="closeConfirm(true)">삭제</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="promptModal" style="display:none;">
+  <div class="modal-overlay">
+    <div class="modal" style="max-width:380px;">
+      <h3 id="promptTitle">입력</h3>
+      <p id="promptMsg" style="color:var(--muted);font-size:14px;margin-bottom:12px;white-space:pre-line;"></p>
+      <input id="promptInput" type="text" autocomplete="off"
+             style="width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:14px;margin-bottom:16px;">
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn btn-outline btn-sm" onclick="closePrompt(null)">취소</button>
+        <button class="btn btn-outline btn-sm" id="promptOkBtn" onclick="closePromptOk()">확인</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="static/js/main.js?v={{ app_version|default('dev') }}"></script>
+
+
+</body>
+</html>

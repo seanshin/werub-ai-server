@@ -1,0 +1,290 @@
+{
+  "_doc": [
+    "task → 모델 라우팅. **코드에 모델명을 쓰지 않는다.**",
+    "",
+    "task 이름 규약: <domain>.<role>  (예: medical_law.answer · eval.faithfulness_judge)",
+    "규약을 안 정하면 141개 하드코딩이 141개 task로 흩어진다.",
+    "",
+    "policy:",
+    "  local_only — 외부 provider로 **보낼 수 없다**(fail-closed).",
+    "               의료·PHI·규제 경로가 프론티어로 번지지 않게 하는 마지막 방어선.",
+    "               PHI 비저장 확인서(HIS 서명 제공)·식약처 규제 트랙(모델카드·digest)",
+    "               이 걸려 있다. 완화는 규제 검토 사안이지 코드 결정이 아니다.",
+    "  any        — 외부 provider 허용 가능(비의료 도메인).",
+    "",
+    "⚠️ 임베딩(requires_reindex=true)은 교체 시 **전 코퍼스 재색인**이 필요하다.",
+    "   차원이 바뀌면 저장 임베딩 재사용이 불가능하다(v2.124.8은 거리공간만 바꿔",
+    "   12,686청크를 재구축했다). seam은 '바꿀 수 있게' 만들되 '바꾸기 쉬워 보이게'",
+    "   만들면 안 된다.",
+    "",
+    "현재 값은 **코드에 하드코딩돼 있던 것을 그대로** 옮긴 것이다(동작 불변).",
+    "이관 전에는 어느 호출자도 이 표를 쓰지 않는다 — 위험 0."
+  ],
+  "_version": "1",
+  "defaults": {
+    "policy": "local_only",
+    "provider": "ollama"
+  },
+  "tasks": {
+    "medical_law.answer": {
+      "model": "qwen2.5:14b",
+      "options": {
+        "temperature": 0.3,
+        "num_predict": 1024
+      },
+      "note": "/ask·/ask/stream. ⚠️ 실제로는 상주 모델을 따른다(_default_model) — 이관 시 그 동작을 보존할 것"
+    },
+    "medical_law.structured": {
+      "model": "qwen2.5:14b",
+      "options": {
+        "temperature": 0.2,
+        "num_predict": 1024
+      },
+      "note": "format=json 강제 경로(_generate_json)"
+    },
+    "eval.faithfulness_judge": {
+      "model_from": "judge_config:faithfulness",
+      "note": "🔑 값을 여기 적지 않는다 — core/judge_config.py가 정본이다. 여기에 또 적으면 config로 judge를 바꿔도 /api/models/routing이 옛 값을 광고한다(규제 트랙 감지 계약). 교체는 별도 릴리즈로만·추세 단절점이 생긴다"
+    },
+    "eval.quality_judge": {
+      "model_from": "judge_config:quality",
+      "note": "동상"
+    },
+    "eval.verifier": {
+      "model": "qwen2.5:7b",
+      "note": "교차검증 — judge(14b)와 **다른 체크포인트**를 써야 모델 이종성이 확보된다. judge와 같아지면 교차검증이 자기 자신을 확인하는 셈이 된다"
+    },
+    "eval.verifier_minicheck": {
+      "model": "bespoke-minicheck",
+      "note": "⚠️ 레거시 opt-in(FAITH_VERIFIER=minicheck). CC BY-NC 4.0이라 기본에서 제외했고 설치본도 제거했다(v2.124.14) — 등록만 남긴다"
+    },
+    "counseling.counselor": {
+      "model": "ALIENTELLIGENCE/mindwell",
+      "note": "🔴 policy=local_only 유지. 상담 내용은 정신건강 정보다 — 완화는 규제·프라이버시 검토 사안이지 코드 결정이 아니다. 영어 중심 모델이라 뒤에 한국어 자연화 단계가 붙는다(counseling.refine)"
+    },
+    "counseling.refine": {
+      "model": "qwen3:8b",
+      "note": "한국어 자연화. 이 단계가 빠지면 영어가 샌다 — 통제군 korean-only-response가 그것을 지킨다"
+    },
+    "writing.default": {
+      "model": "qwen2.5:14b",
+      "note": "⚠️ 실제로는 호출자가 모델을 동적으로 고른다(파이프라인 단계별 cfg). 이관 1단계 규율대로 **모델 선택은 호출자에 남기고** task 등록·정책·전송만 가져온다"
+    },
+    "korean.spellcheck": {
+      "model": "qwen2.5:7b",
+      "note": "맞춤법 — 결정적 규칙 판정이라 작은 모델로 충분(외부 API 0 기조)"
+    },
+    "korean.transform": {
+      "model": "qwen2.5:7b",
+      "note": "문체 변환·피드백 등 한국어 변환 계열"
+    },
+    "orchestrator.tool_calling": {
+      "model_from": "tools_config:defaults",
+      "note": "🔑 값을 여기 적지 않는다 — `config/tools.json`이 정본이고 `POST /api/orchestrator/tools/reload`로 무재배포 교체된다. 표에 또 적으면 reload로 바꾼 모델을 /api/models/routing이 옛 값으로 광고한다"
+    },
+    "medical.heavy": {
+      "model": "werubmedv2",
+      "note": "⚠️ 자체 파인튜닝 모델. medical_pin_public_models 가드가 켜지면 공개 모델로 대체된다(규제 유형① 대비)"
+    },
+    "medical.light": {
+      "model": "qwen2.5:7b"
+    },
+    "rag.embed": {
+      "model": "bge-m3",
+      "ctx": 2048,
+      "requires_reindex": true,
+      "note": "🔴 교체 시 전 코퍼스 재색인 필요(medical_law 13,002 + medical_pub 15,285 + werub_docs + edu_docs). ctx 명시는 §1-2 OOM 봉합 — 빼면 전역 8192를 먹어 KV 4.5GB로 상주 14b와 겹쳐 RAG가 500이 된다(v2.86.12 실측)"
+    },
+    "orchestrator.general_chat": {
+      "model_from": "tools_config:general_chat",
+      "note": "intent 미매칭+도구 미사용 폴백. 모델·온도·시스템 전부 tools.json general_chat 블록"
+    },
+    "orchestrator.workflow_step": {
+      "model_from": "tools_config:workflow_default_model",
+      "note": "워크플로 ai:/llm: 스텝 기본 모델. ⚠️ 스텝이 model을 명시하면 그것이 이긴다(호출자 우선)"
+    },
+    "novel.draft": {
+      "model": "qwen2.5:14b",
+      "note": "⚠️ 호출자가 단계별로 모델을 고른다(집필·구조·다듬기). 이관 1단계 규율대로 **모델 선택은 호출자에 남기고** task 등록·정책·전송만 가져온다. policy=local_only 유지 — 창작물은 PHI가 아니지만 외부 전송은 별도 판단 사안"
+    },
+    "coding.embed": {
+      "model": "qwen3-embedding:8b",
+      "fallback": "nomic-embed-text",
+      "ctx": 2048,
+      "requires_reindex": true,
+      "note": "🔴 코드 검색 색인 전용 — **rag.embed와 다른 모델**이고 저장된 벡터와 짝이라 함께 재색인하지 않으면 검색이 무의미해진다. 폴백은 1순위 모델 미적재 시에만. ⚠️ 2026-08-12까지 이 경로만 num_ctx가 없어 §1-2 OOM 결함이 남아 있었다"
+    },
+    "eval.retrieval_judge": {
+      "model": "qwen2.5:14b",
+      "note": "검색 품질(ctx_precision/sufficiency) 판정. 호출자가 RETRIEVAL_JUDGE_MODEL env(기본 qwen2.5:14b)로 덮어쓴다 — 이관 장치·표 값은 광고용. v2.125.12 D1 슬라이스 1에서 core/retrieval_eval 직접 호출 이관"
+    },
+    "eval.selfcheck_sample": {
+      "model": "qwen2.5:14b",
+      "note": "SelfCheckGPT 재샘플(비-RAG 환각). 호출자가 SELFCHECK_SAMPLE_MODEL env/인자로 덮어쓸 수 있다(이관 장치). v2.125.12 D1 슬라이스 1"
+    },
+    "rag.answer": {
+      "model": "qwen2.5:7b",
+      "note": "/api/rag/query 답변 생성 — 종전 기본 qwen2.5:7b(요청 model로 덮어씀). v2.125.12 D1 슬라이스 2"
+    },
+    "notice.diagnose_json": {
+      "model": "qwen2.5:14b",
+      "note": "삭감위험 진단 JSON 생성(format json). 호출자가 model 인자로 덮어쓴다. v2.125.12 D1 슬라이스 2"
+    },
+    "medical.structured_report": {
+      "model": "medgemma:4b",
+      "note": "영상 구조화 판독 보고서(JSON) — 비전 입력. v2.125.12 D1 슬라이스 2 · 종전 하드코딩 medgemma:4b 그대로"
+    },
+    "game.npc_generate": {
+      "model": "qwen2.5:14b",
+      "note": "NPC 템플릿 자동 생성(JSON) — 호출자 model 인자 우선(config default_model). v2.125.13 D1"
+    },
+    "game.npc_dialogue": {
+      "model": "qwen2.5:14b",
+      "note": "NPC 2인/다자 대화 턴 JSON 생성 — 호출자 model 인자 우선. v2.125.13 D1"
+    },
+    "game.levelup_skill": {
+      "model": "qwen2.5:14b",
+      "note": "레벨업 신규 스킬 1개 JSON — 호출자 model 인자 우선. v2.125.13 D1"
+    },
+    "game.scenario": {
+      "model": "qwen2.5:14b",
+      "note": "게임 시나리오 JSON 생성 — 호출자 model 인자 우선. v2.125.13 D1"
+    },
+    "game.image_prompt": {
+      "model": "qwen2.5:14b",
+      "note": "캐릭터/장면 설명 → 영문 이미지 프롬프트 — 호출자 model 인자 우선. v2.125.13 D1"
+    },
+    "game.npc_interact": {
+      "model": "qwen2.5:14b",
+      "note": "공유 NPC 상호작용 응답(system+prompt) — 호출자 model 인자 우선. v2.125.13 D1"
+    },
+    "game.heroine_date": {
+      "model": "qwen2.5:14b",
+      "note": "히로인 데이트 장면 JSON — 호출자 model 인자 우선. v2.125.13 D1"
+    },
+    "game.heroine_gift": {
+      "model": "qwen2.5:14b",
+      "note": "히로인 선물 반응 JSON — 호출자 model 인자 우선. v2.125.13 D1"
+    },
+    "game.heroine_confess": {
+      "model": "qwen2.5:14b",
+      "note": "히로인 고백 반응 텍스트 — 호출자 model 인자 우선. v2.125.13 D1"
+    },
+    "game.heroine_generate": {
+      "model": "qwen2.5:14b",
+      "note": "히로인 프로필 자동 생성 JSON — 호출자 model 인자 우선. v2.125.13 D1"
+    },
+    "hr_law.answer": {
+      "model": "qwen2.5:14b",
+      "note": "/api/hr-law/ask/stream. 동적 — 요청 model > config default_model > qwen2.5:14b(호출자 model=). ⚠️ options를 표에 넣지 말 것 — 종전 본문에 options가 없었고 호출자가 안 넘겨 표 값이 그대로 실린다. v2.125.13 D1"
+    },
+    "hr_law.rules_draft": {
+      "model": "qwen2.5:14b",
+      "note": "취업규칙 초안(temperature 0.5·num_predict 3000). 동적 — config default_model > qwen2.5:14b. v2.125.13 D1"
+    },
+    "hr_law.rules_review": {
+      "model": "qwen2.5:14b",
+      "note": "취업규칙 법위반 검토(temperature 0.3·num_predict 3000·system 없음). 동적 — config default_model. v2.125.13 D1"
+    },
+    "medical.generate": {
+      "model": "qwen2.5:14b",
+      "note": "_medical_generate 공용 헬퍼(전 임상 액션). 동적 — _get_medical_model(action) > active_model_config heavy/light > _pin_public. options는 호출자가 넘긴다. v2.125.13 D1"
+    },
+    "medical.cli_intent": {
+      "model": "qwen2.5:14b",
+      "note": "CLI 의도 분류 폴백(JSON·temperature 0.1·num_predict 100). 종전 하드코딩 그대로. v2.125.13 D1"
+    },
+    "medical.cli_action": {
+      "model": "qwen2.5:14b",
+      "note": "CLI LLM 액션(temperature 0.3·num_predict 1000). 종전 하드코딩 그대로. v2.125.13 D1"
+    },
+    "ws.chat": {
+      "model": "qwen2.5:7b",
+      "note": "/api/ws/chat SSE 스트림 — 모델은 요청 model(기본 qwen2.5:7b)이 정한다(광고용). v2.125.13 D1"
+    },
+    "ws.generate": {
+      "model": "qwen2.5:7b",
+      "note": "/api/ws/generate SSE 스트림 — 요청 model 우선. v2.125.13 D1"
+    },
+    "chat.memory_summary": {
+      "model": "qwen2.5:7b",
+      "note": "세션 히스토리 압축 요약 — 호출자가 _summary_model()(상주 모델 추종·폴백 qwen2.5:7b)로 덮어쓴다. v2.125.13 D1"
+    },
+    "meeting.summarize": {
+      "model": "qwen3:8b",
+      "note": "회의 요약/액션아이템(meeting_pipeline.LLM_MODEL 그대로). v2.125.13 D1"
+    },
+    "meeting.vision_frame": {
+      "model": "qwen3-vl:8b",
+      "note": "키프레임 비전 분석 — think:false·num_predict 2048 예산(v2.125.10)은 호출자가 싣는다. v2.125.13 D1"
+    },
+    "queue.llm_job": {
+      "model": "qwen2.5:7b",
+      "note": "배치 큐 워커 /api/generate — 모델은 잡(job.model)이 정한다(광고용). ⚠️ options를 표에 넣지 말 것(잡 옵션 없음=빈 옵션이 종전 계약). v2.125.13 D1"
+    },
+    "story.generate": {
+      "model": "qwen2.5:14b",
+      "note": "routes/story.py _generate·_generate_stream — 종전 STORY_MODEL qwen2.5:14b(일부 FAST_MODEL qwen2.5:7b·요청 model 우선). 호출자 세션(ChatFairQueue) 전달. v2.125.13 D1"
+    },
+    "triage.extract_symptoms": {
+      "model": "qwen2.5:14b",
+      "note": "증상 키워드 JSON 배열 추출(규칙 실패 시). 종전 하드코딩 그대로. v2.125.13 D1"
+    },
+    "triage.guidance": {
+      "model": "qwen2.5:14b",
+      "note": "진료과 안내문 2-3문장 생성. 종전 하드코딩 그대로. v2.125.13 D1"
+    },
+    "vision.describe": {
+      "model": "qwen3-vl:8b",
+      "note": "일반 이미지 설명 /api/vision/describe. 호출자가 model=(요청 model|VISION_MODEL→폴백 minicpm-v:latest)로 덮어쓴다·사고형 예산은 _vision_payload. v2.125.13 D1"
+    },
+    "vision.medical_classify": {
+      "model": "dcarrascosa/medgemma-1.5-4b-it:Q8_0",
+      "note": "precheck 의료 영상 분류(keep_alive 10m). 종전 MEDICAL_VISION_MODEL 그대로. v2.125.13 D1"
+    },
+    "vision.medical_analyze": {
+      "model": "dcarrascosa/medgemma-1.5-4b-it:Q8_0",
+      "note": "의료 영상 분석 비스트림. v2.125.13 D1"
+    },
+    "vision.medical_stream": {
+      "model": "dcarrascosa/medgemma-1.5-4b-it:Q8_0",
+      "note": "의료 영상 분석 SSE 스트림(keep_alive 10m). v2.125.13 D1"
+    },
+    "vision.medical_report": {
+      "model": "dcarrascosa/medgemma-1.5-4b-it:Q8_0",
+      "note": "비교 판독(이미지 1~2장). v2.125.13 D1"
+    },
+    "vision.dual_read_primary": {
+      "model": "dcarrascosa/medgemma-1.5-4b-it:Q8_0",
+      "note": "이중 판독 1차. v2.125.13 D1"
+    },
+    "vision.dual_read_secondary": {
+      "model": "medgemma:4b",
+      "note": "이중 판독 2차(LLAVA_MED_MODEL). v2.125.13 D1"
+    },
+    "general.chat": {
+      "model": "qwen2.5:14b",
+      "options": {
+        "temperature": 0.7,
+        "num_predict": 1024
+      },
+      "note": "일반 AI 표면 기본(assistant 프로필) — 의료 표면과 분리(v2.125.34)"
+    },
+    "general.community_chat": {
+      "model": "hyperclova-seed:1.5b",
+      "options": {
+        "temperature": 0.7,
+        "num_predict": 512
+      },
+      "note": "커뮤니티 프로필 — HyperCLOVA X SEED 1.5B. 라이선스가 의료 등 전문 서비스 용도를 금지하므로 일반 표면 전용 배선(그 자체가 준수 장치)"
+    },
+    "medlaw.ocr": {
+      "model": "deepseek-ocr:latest",
+      "options": {
+        "temperature": 0,
+        "num_predict": 4096
+      },
+      "note": "파싱 붕괴 PDF OCR 폴백(스케줄러 색인 경로 전용·요청 경로 아님) — 사전 등록 측정으로 채택(재현율 0.983). v2.125.37"
+    }
+  }
+}

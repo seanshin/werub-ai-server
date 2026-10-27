@@ -1,0 +1,36 @@
+# Content Safety Moderation — Training Configuration
+# Created: 2026-04-20
+
+base_model: "unsloth/Qwen2.5-1.5B-Instruct-bnb-4bit"
+output_dir: "./training/outputs"
+model_name_prefix: "cs-mod"
+
+# QLoRA
+lora_r: 16
+lora_alpha: 16
+lora_dropout: 0.05
+
+# Training
+num_epochs: 3
+batch_size: 4
+gradient_accumulation_steps: 4
+learning_rate: 2.0e-4
+warmup_ratio: 0.1
+max_seq_length: 512
+
+# Data
+train_split: 0.8
+min_samples: 50
+max_samples: 10000
+data_dir: "./training/data"
+
+# Evaluation
+eval_threshold_f1: 0.85
+min_improvement: 0.01
+
+# GGUF
+quantization: "Q4_K_M"
+
+# GPU Safety
+max_vram_pct: 80
+preempt_check_interval: 30

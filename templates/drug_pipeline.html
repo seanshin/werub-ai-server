@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Drug Data Pipeline</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0b0f;--surface:#12141c;--card:#161822;--border:#1e2130;
+  --text:#e4e4e7;--muted:#71717a;--accent:#6366f1;
+  --green:#22c55e;--red:#ef4444;--yellow:#eab308;--blue:#3b82f6;--cyan:#06b6d4;
+  --t1:#22c55e;--t2:#3b82f6;--t3:#71717a;--t4:#eab308;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.header{padding:12px 20px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.header h1{font-size:16px;font-weight:700}
+.header .meta{font-size:11px;color:var(--muted)}
+.header a{color:var(--accent);font-size:11px;text-decoration:none}
+.tabs{display:flex;gap:0;background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;overflow-x:auto}
+.tab{padding:10px 16px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;white-space:nowrap}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.panel{display:none;padding:16px 20px;max-width:1400px;margin:0 auto}
+.panel.active{display:block}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+@media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr)}}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px}
+.card .val{font-size:22px;font-weight:800}
+.card .lbl{font-size:10px;color:var(--muted);margin-top:2px}
+.card .sub{font-size:10px;margin-top:4px}
+.card .sub.up{color:var(--green)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+@media(max-width:900px){.row{grid-template-columns:1fr}}
+.section{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px}
+.section h3{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+.chart-box{position:relative;height:180px}
+.chart-box canvas{width:100%!important;height:180px!important}
+table.data{width:100%;border-collapse:collapse;font-size:11px}
+table.data th{text-align:left;padding:6px 8px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase}
+table.data td{padding:5px 8px;border-bottom:1px solid rgba(30,33,48,.3)}
+.badge{padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700}
+.badge-t1{background:rgba(34,197,94,.15);color:var(--t1)}
+.badge-t2{background:rgba(59,130,246,.15);color:var(--t2)}
+.badge-t3{background:rgba(113,113,122,.15);color:var(--t3)}
+.badge-t4{background:rgba(234,179,8,.15);color:var(--t4)}
+.badge-ok{background:rgba(34,197,94,.15);color:var(--green)}
+.badge-err{background:rgba(239,68,68,.15);color:var(--red)}
+.badge-run{background:rgba(59,130,246,.15);color:var(--blue)}
+.badge-skip{background:rgba(234,179,8,.15);color:var(--yellow)}
+.btn{padding:6px 14px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit}
+.btn:hover{border-color:var(--accent)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-danger{border-color:var(--red);color:var(--red)}
+.btn-sm{padding:3px 8px;font-size:10px}
+.form-row{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.form-row select,.form-row input{padding:5px 10px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:4px;font-size:11px;font-family:inherit}
+/* Pipeline progress */
+.phase-bar{display:flex;gap:0;align-items:center;margin:0}
+.phase{flex:1;text-align:center;padding:14px 8px 10px;background:var(--surface);border-radius:10px;border:2px solid var(--border);transition:all .4s ease;position:relative}
+.phase-arrow{color:var(--border);font-size:14px;padding:0 4px;flex-shrink:0;transition:color .4s}
+.phase-icon{font-size:20px;margin-bottom:4px}
+.phase .name{font-size:9px;color:var(--muted);text-transform:uppercase;font-weight:700;letter-spacing:.5px}
+.phase .count{font-size:22px;font-weight:800;margin:4px 0 2px;transition:color .3s}
+.phase .phase-sub{font-size:9px;color:var(--muted);min-height:13px}
+.phase .bar{height:4px;background:var(--border);border-radius:2px;margin-top:8px;overflow:hidden}
+.phase .bar-fill{height:100%;border-radius:2px;transition:width .6s ease}
+.phase.done{border-color:var(--green);background:rgba(34,197,94,.05)}
+.phase.done .count{color:var(--green)}
+.phase.done .bar-fill{background:var(--green)}
+.phase.done+.phase-arrow{color:var(--green)}
+.phase.active{border-color:var(--blue);background:rgba(99,102,241,.05)}
+.phase.active .count{color:var(--blue)}
+.phase.active .bar-fill{background:linear-gradient(90deg,var(--accent),var(--cyan));animation:pulse-bar 1.5s ease infinite}
+.phase.active+.phase-arrow{color:var(--blue)}
+.phase.idle .bar-fill{background:var(--border)}
+.phase.fail{border-color:var(--red);background:rgba(239,68,68,.05)}
+.phase.fail .count{color:var(--red)}
+@keyframes pulse-bar{0%,100%{opacity:1}50%{opacity:.5}}
+/* Log */
+.log-box{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;max-height:300px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:10px;line-height:1.8}
+.log-line{border-bottom:1px solid rgba(30,33,48,.2);padding:2px 0}
+.log-line .ts{color:var(--muted);margin-right:8px}
+.log-line .act{color:var(--cyan);font-weight:600;margin-right:6px}
+/* Timeline */
+.timeline{position:relative;padding-left:24px}
+.timeline::before{content:'';position:absolute;left:7px;top:0;bottom:0;width:2px;background:var(--border)}
+.tl-item{position:relative;margin-bottom:16px}
+.tl-item::before{content:'';position:absolute;left:-20px;top:4px;width:10px;height:10px;border-radius:50%;background:var(--accent);border:2px solid var(--bg)}
+.tl-item.create::before{background:var(--green)}
+.tl-item.enrich::before{background:var(--blue)}
+.tl-item.update::before{background:var(--yellow)}
+.tl-date{font-size:10px;color:var(--muted);font-weight:600}
+.tl-action{font-size:11px;font-weight:700;margin:2px 0}
+.tl-detail{font-size:10px;color:var(--muted)}
+/* Confidence bar */
+.conf-bar{display:inline-flex;gap:1px;vertical-align:middle}
+.conf-bar span{width:6px;height:12px;border-radius:1px}
+.conf-bar span.on{background:var(--green)}
+.conf-bar span.mid{background:var(--yellow)}
+.conf-bar span.off{background:var(--border)}
+.mono{font-family:'JetBrains Mono',monospace}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Drug Data Pipeline</h1>
+    <div class="meta" id="lastSync">Loading...</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <span class="meta" id="refreshInfo">Auto-refresh: 30s</span>
+    <a href="admin">← Admin</a>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('overview')">Overview</button>
+  <button class="tab" onclick="switchTab('pipeline')">Pipeline</button>
+  <button class="tab" onclick="switchTab('staging')">Staging</button>
+  <button class="tab" onclick="switchTab('provenance')">Provenance</button>
+  <button class="tab" onclick="switchTab('settings')">Settings</button>
+</div>
+
+<!-- ═══ OVERVIEW ═══ -->
+<div id="panel-overview" class="panel active">
+  <div class="cards" id="summaryCards">
+    <div class="card"><div class="val" id="cDrug">--</div><div class="lbl">Drug Codes</div><div class="sub up" id="cDrugSub"></div></div>
+    <div class="card"><div class="val" id="cInter">--</div><div class="lbl">Interactions</div><div class="sub" id="cInterSub"></div></div>
+    <div class="card"><div class="val" id="cDeny">--</div><div class="lbl">Denial Reasons</div><div class="sub" id="cDenySub"></div></div>
+    <div class="card"><div class="val" id="cConf">--</div><div class="lbl">Avg Confidence</div><div class="sub" id="cConfSub"></div></div>
+  </div>
+  <div class="row">
+    <div class="section">
+      <h3>Source Tier Distribution</h3>
+      <div class="chart-box"><canvas id="tierChart"></canvas></div>
+    </div>
+    <div class="section">
+      <h3>Confidence Distribution</h3>
+      <div class="chart-box"><canvas id="confChart"></canvas></div>
+    </div>
+  </div>
+  <div class="section" style="margin-bottom:16px">
+    <h3>Data Sources</h3>
+    <table class="data"><thead><tr><th>Source</th><th>Tier</th><th>Count</th><th>Reference</th></tr></thead>
+    <tbody id="sourceTable"></tbody></table>
+  </div>
+  <div class="section" style="margin-bottom:16px">
+    <h3>Recent Pipeline Runs</h3>
+    <table class="data"><thead><tr><th>#</th><th>Type</th><th>When</th><th>+Added</th><th>Status</th></tr></thead>
+    <tbody id="recentRuns"></tbody></table>
+  </div>
+</div>
+
+  <!-- Guide -->
+  <div class="section" style="margin-top:4px">
+    <h3>Quick Guide</h3>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;font-size:11px">
+      <div>
+        <div style="font-weight:700;color:var(--accent);margin-bottom:6px">1. Pipeline — 배치 실행</div>
+        <div style="color:var(--muted);line-height:1.7">
+          <b>Pipeline</b> 탭에서 <b>Run Now</b> 클릭<br>
+          <span style="color:var(--t4)">daily_collect</span> — 부족 카테고리 약물 LLM 자동 생성<br>
+          <span style="color:var(--t4)">weekly_interaction</span> — 상호작용 갱신<br>
+          <span style="color:var(--t4)">monthly_denial</span> — 삭감사유 갱신<br>
+          <span style="color:var(--t4)">full_validate</span> — 전체 DB 무결성 검증<br>
+          <span style="color:var(--muted)">Dry Run 체크 시 DB 반영 없이 시뮬레이션</span>
+        </div>
+      </div>
+      <div>
+        <div style="font-weight:700;color:var(--cyan);margin-bottom:6px">2. Staging — 검토 & 승인</div>
+        <div style="color:var(--muted);line-height:1.7">
+          수집된 데이터는 <b>Staging</b>에 대기<br>
+          4-Layer 검증 통과 시 자동 커밋<br>
+          검증 실패 건은 수동 <b>Approve/Reject</b><br>
+          <span class="badge badge-t1" style="font-size:8px">T1</span> 공인기관 &gt;
+          <span class="badge badge-t2" style="font-size:8px">T2</span> 가이드라인 &gt;
+          <span class="badge badge-t3" style="font-size:8px">T3</span> 수동입력 &gt;
+          <span class="badge badge-t4" style="font-size:8px">T4</span> AI생성
+        </div>
+      </div>
+      <div>
+        <div style="font-weight:700;color:var(--green);margin-bottom:6px">3. Provenance — 출처 추적</div>
+        <div style="color:var(--muted);line-height:1.7">
+          <b>Provenance</b> 탭에서 약물코드 검색<br>
+          예: <span class="mono" style="color:var(--text)">D-MER01</span> → 타임라인 조회<br>
+          모든 필드별 출처(Tier) 확인 가능<br>
+          변경 이력 CSV/JSON 내보내기<br>
+          <span style="color:var(--muted)">Confidence 0.0~1.0 (높을수록 신뢰)</span>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:10px;color:var(--muted)">
+      <b>API 직접 호출:</b>&nbsp;
+      <span class="mono">POST /api/drug-batch/run</span> 배치 실행 &nbsp;|&nbsp;
+      <span class="mono">GET /api/drug-batch/status</span> 상태 확인 &nbsp;|&nbsp;
+      <span class="mono">GET /api/provenance/drug_codes/{code}/timeline</span> 출처 타임라인 &nbsp;|&nbsp;
+      <span class="mono">GET /api/provenance/summary</span> 전체 분포
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PIPELINE ═══ -->
+<div id="panel-pipeline" class="panel">
+  <div class="section" style="margin-bottom:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <h3 style="margin:0">Run Control</h3>
+      <div id="modeIndicator" style="display:flex;align-items:center;gap:8px;font-size:11px"></div>
+    </div>
+    <div class="form-row">
+      <select id="runType"><option value="daily_collect">daily_collect</option><option value="night_collect">night_collect</option><option value="weekly_interaction">weekly_interaction</option><option value="monthly_denial">monthly_denial</option><option value="full_validate">full_validate</option></select>
+      <select id="runSource"><option value="">All Sources</option><option value="LLM_SEED">LLM Seed</option><option value="MANUAL">Manual</option><option value="MFDS">MFDS</option></select>
+      <input type="number" id="runLimit" value="50" min="1" max="500" style="width:70px" title="Limit">
+      <label style="font-size:11px;color:var(--muted)"><input type="checkbox" id="runDry"> Dry Run</label>
+      <button class="btn btn-primary" onclick="startRun()">Run Now</button>
+      <button class="btn btn-danger" onclick="stopRun()" id="btnStop" disabled>Stop</button>
+    </div>
+  </div>
+  <div class="section" style="margin-bottom:16px">
+    <h3>Live Progress</h3>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div id="pipelineStatus" style="font-size:11px;color:var(--muted)">No active run</div>
+      <div id="pipelineElapsed" style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace"></div>
+    </div>
+    <!-- Overall progress bar -->
+    <div style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:4px">
+        <span id="overallLabel">Idle</span>
+        <span id="overallPct">0%</span>
+      </div>
+      <div style="height:6px;background:var(--surface);border-radius:3px;overflow:hidden">
+        <div id="overallBar" style="height:100%;width:0;border-radius:3px;background:linear-gradient(90deg,var(--accent),var(--cyan));transition:width .6s ease"></div>
+      </div>
+    </div>
+    <!-- Phase pipeline visual -->
+    <div class="phase-bar" id="phaseBar">
+      <div class="phase idle" id="phaseCollect">
+        <div class="phase-icon">&#128230;</div>
+        <div class="name">Collect</div>
+        <div class="count" id="phCollect">0</div>
+        <div class="phase-sub" id="phCollectSub"></div>
+        <div class="bar"><div class="bar-fill" id="barCollect" style="width:0"></div></div>
+      </div>
+      <div class="phase-arrow">&#9654;</div>
+      <div class="phase idle" id="phaseEnrich">
+        <div class="phase-icon">&#129302;</div>
+        <div class="name">Enrich</div>
+        <div class="count" id="phEnrich">0</div>
+        <div class="phase-sub" id="phEnrichSub"></div>
+        <div class="bar"><div class="bar-fill" id="barEnrich" style="width:0"></div></div>
+      </div>
+      <div class="phase-arrow">&#9654;</div>
+      <div class="phase idle" id="phaseValidate">
+        <div class="phase-icon">&#9989;</div>
+        <div class="name">Validate</div>
+        <div class="count" id="phValidate">0</div>
+        <div class="phase-sub" id="phValidateSub"></div>
+        <div class="bar"><div class="bar-fill" id="barValidate" style="width:0"></div></div>
+      </div>
+      <div class="phase-arrow">&#9654;</div>
+      <div class="phase idle" id="phaseCommit">
+        <div class="phase-icon">&#128190;</div>
+        <div class="name">Commit</div>
+        <div class="count" id="phCommit">0</div>
+        <div class="phase-sub" id="phCommitSub"></div>
+        <div class="bar"><div class="bar-fill" id="barCommit" style="width:0"></div></div>
+      </div>
+    </div>
+    <!-- Fail/skip summary -->
+    <div id="pipelineSummary" style="display:none;margin-top:10px;padding:8px 12px;background:var(--surface);border-radius:6px;font-size:10px;display:flex;gap:16px"></div>
+  </div>
+  <div class="section">
+    <h3>Run History</h3>
+    <table class="data"><thead><tr><th>#</th><th>Type</th><th>Trigger</th><th>Model</th><th>When</th><th>Fetch</th><th>Enrich</th><th>Commit</th><th>Skip</th><th>Fail</th><th>Tokens</th><th>Duration</th><th>Status</th></tr></thead>
+    <tbody id="historyTable"></tbody></table>
+  </div>
+</div>
+
+<!-- ═══ STAGING ═══ -->
+<div id="panel-staging" class="panel">
+  <div class="form-row">
+    <select id="stgStatus" onchange="loadStaging()"><option value="">All Status</option><option value="fetched">fetched</option><option value="enriching">enriching</option><option value="enriched">enriched</option><option value="validated">validated</option><option value="committed">committed</option><option value="skipped">skipped</option><option value="failed">failed</option></select>
+    <button class="btn" onclick="loadStaging()">Refresh</button>
+  </div>
+  <div class="section">
+    <table class="data"><thead><tr><th>#</th><th>Source</th><th>Tier</th><th>Target</th><th>Status</th><th>Confidence</th><th>Error</th><th>Actions</th></tr></thead>
+    <tbody id="stagingTable"></tbody></table>
+    <div id="stagingPager" style="margin-top:8px;font-size:11px;color:var(--muted)"></div>
+  </div>
+</div>
+
+<!-- ═══ PROVENANCE ═══ -->
+<div id="panel-provenance" class="panel">
+  <div class="form-row">
+    <select id="provTable"><option value="drug_codes">drug_codes</option><option value="drug_interactions">drug_interactions</option><option value="denial_reasons">denial_reasons</option></select>
+    <input id="provKey" placeholder="Record key (e.g. D-MER01)" style="width:200px">
+    <button class="btn btn-primary" onclick="searchProvenance()">Search</button>
+    <button class="btn" onclick="loadRecentChanges()">Recent Changes</button>
+  </div>
+  <div id="provResult" class="section" style="display:none">
+    <div id="provRecord"></div>
+    <h3 style="margin-top:12px">Timeline</h3>
+    <div class="timeline" id="provTimeline"></div>
+  </div>
+  <div class="section" style="margin-top:12px">
+    <h3>Recent Changes</h3>
+    <table class="data"><thead><tr><th>When</th><th>Table</th><th>Key</th><th>Action</th><th>Field</th><th>Source</th><th>Tier</th></tr></thead>
+    <tbody id="recentChanges"></tbody></table>
+  </div>
+</div>
+
+<!-- ═══ SETTINGS ═══ -->
+<div id="panel-settings" class="panel">
+  <div class="row">
+    <div class="section">
+      <h3>Night Mode</h3>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <div id="nightToggle" onclick="toggleNight()" style="width:44px;height:24px;border-radius:12px;background:var(--border);cursor:pointer;position:relative;transition:background .3s">
+          <div id="nightToggleKnob" style="width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left .3s"></div>
+        </div>
+        <span id="nightToggleLabel" style="font-size:12px;font-weight:600">OFF</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);line-height:2">
+        <div style="display:flex;justify-content:space-between"><span>Active Hours</span><span id="nmHours" class="mono" style="color:var(--text)">--</span></div>
+        <div style="display:flex;justify-content:space-between"><span>Limit / run</span><span id="nmLimit" class="mono" style="color:var(--text)">--</span></div>
+        <div style="display:flex;justify-content:space-between"><span>Model</span><span id="nmModel" class="mono" style="color:var(--text)">--</span></div>
+        <div style="display:flex;justify-content:space-between"><span>Priority</span><span id="nmPriority" class="mono" style="color:var(--text)">--</span></div>
+        <div style="display:flex;justify-content:space-between"><span>Interval</span><span id="nmInterval" class="mono" style="color:var(--text)">--</span></div>
+        <div style="display:flex;justify-content:space-between"><span>Max runs / night</span><span id="nmMaxRuns" class="mono" style="color:var(--text)">--</span></div>
+        <div style="display:flex;justify-content:space-between"><span>LLM timeout</span><span id="nmTimeout" class="mono" style="color:var(--text)">--</span></div>
+      </div>
+      <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);font-size:10px;color:var(--muted)">
+        Day Mode: limit 50 · werub-medical:7b · priority 4
+      </div>
+    </div>
+    <div class="section">
+      <h3>Schedule (Day Mode)</h3>
+      <table class="data"><thead><tr><th>Job</th><th>Interval</th><th>Time</th></tr></thead>
+      <tbody id="scheduleTable"></tbody></table>
+    </div>
+  </div>
+  <div class="section" style="margin-top:12px">
+    <h3>Database Info</h3>
+    <div id="dbInfo" style="font-size:11px;color:var(--muted)">Loading...</div>
+  </div>
+</div>
+
+<script>
+const BASE = location.pathname.replace(/\/drug-pipeline\/?$/,'') || '';
+const API = (p) => BASE + p;
+let refreshTimer = null;
+let isRunning = false;
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('panel-'+name).classList.add('active');
+  if (name==='overview') loadOverview();
+  if (name==='pipeline') { loadHistory(); pollStatus(); }
+  if (name==='staging') loadStaging();
+  if (name==='provenance') loadRecentChanges();
+  if (name==='settings') loadSettings();
+}
+
+async function api(path) {
+  try { const r = await fetch(API(path)); return await r.json(); }
+  catch(e) { console.error(path, e); return null; }
+}
+async function apiPost(path, body) {
+  try { const r = await fetch(API(path), {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); return await r.json(); }
+  catch(e) { console.error(path, e); return null; }
+}
+
+// ── Helpers ──
+function tierBadge(tier, source, url) {
+  const cls = {'T1':'badge-t1','T2':'badge-t2','T3':'badge-t3','T4':'badge-t4'}[tier]||'badge-t3';
+  const label = source ? `${tier} ${source}` : (tier||'?');
+  if (url) return `<a href="${url}" target="_blank" class="badge ${cls}" style="text-decoration:none;cursor:pointer" title="${url}">${label} ↗</a>`;
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+function statusBadge(s) {
+  const m = {completed:'badge-ok',committed:'badge-ok',validated:'badge-ok',running:'badge-run',enriching:'badge-run',fetched:'badge-run',failed:'badge-err',cancelled:'badge-err',skipped:'badge-skip'};
+  return `<span class="badge ${m[s]||'badge-t3'}">${s||'?'}</span>`;
+}
+function confBar(v) {
+  v = v||0; const n = Math.round(v*10);
+  let h='<span class="conf-bar">';
+  for(let i=0;i<10;i++) h+=`<span class="${i<n?(v>=.8?'on':'mid'):'off'}"></span>`;
+  return h+`</span> <span class="mono" style="font-size:10px">${v.toFixed(2)}</span>`;
+}
+
+// ── Overview ──
+let tierChartObj=null, confChartObj=null;
+
+async function loadOverview() {
+  const [summary, stats] = await Promise.all([api('/api/provenance/summary'), api('/api/drug-batch/stats')]);
+  if (!summary) return;
+  const dc = summary.drug_codes;
+  document.getElementById('cDrug').textContent = dc.total;
+  document.getElementById('cInter').textContent = summary.drug_interactions.total;
+  document.getElementById('cDeny').textContent = summary.denial_reasons.total;
+  document.getElementById('cConf').textContent = (dc.avg_confidence||0).toFixed(2);
+
+  // tier chart
+  const tierData = dc.by_tier||{};
+  const tiers = ['T1','T2','T3','T4'];
+  const tierCounts = tiers.map(t => (tierData[t]||{}).count||0);
+  if (tierChartObj) tierChartObj.destroy();
+  tierChartObj = new Chart(document.getElementById('tierChart'), {
+    type:'doughnut', data:{labels:['T1 Authoritative','T2 Evidence','T3 Curated','T4 AI-Generated'],
+    datasets:[{data:tierCounts,backgroundColor:['#22c55e','#3b82f6','#71717a','#eab308'],borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#71717a',font:{size:10}}}}}
+  });
+
+  // conf chart
+  const cd = dc.confidence_distribution||{};
+  const confLabels = Object.keys(cd);
+  const confCounts = Object.values(cd);
+  if (confChartObj) confChartObj.destroy();
+  confChartObj = new Chart(document.getElementById('confChart'), {
+    type:'bar', data:{labels:confLabels,datasets:[{data:confCounts,backgroundColor:'#6366f1',borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,scales:{x:{ticks:{color:'#71717a',font:{size:10}},grid:{display:false}},y:{ticks:{color:'#71717a',font:{size:10}},grid:{color:'#1e2130'}}},plugins:{legend:{display:false}}}
+  });
+
+  // source table
+  const bySource = dc.by_source||{};
+  const sourceNames = {
+    'MFDS':'식약처 의약품안전나라','MFDS/Guideline':'식약처+임상가이드라인',
+    'NCCN/FDA':'NCCN/FDA 항암 가이드라인','ACR/EULAR':'류마티스학회 가이드라인',
+    'ASA':'미국마취과학회','ESC':'유럽심장학회','ESC/ACC':'ESC/ACC 심부전',
+    'ADA/KDA':'미국/대한당뇨병학회','WHO/KDCA':'WHO/질병관리청 결핵','AAN':'미국신경학회'
+  };
+  document.getElementById('sourceTable').innerHTML = Object.entries(bySource).map(([src, info]) => {
+    const cnt = typeof info==='object' ? info.count : info;
+    const url = typeof info==='object' ? info.url : null;
+    const desc = sourceNames[src]||src;
+    const urlBase = url ? url.replace(/\?.*$/,'').replace(/\/$/,'') : '';
+    const link = url ? `<a href="${urlBase}" target="_blank" style="color:var(--accent);text-decoration:none;font-size:10px;font-family:JetBrains Mono,monospace">${urlBase.replace('https://','').slice(0,45)} ↗</a>` : '<span style="color:var(--muted);font-size:10px">-</span>';
+    return `<tr><td><b>${src}</b> <span style="color:var(--muted);font-size:10px">${desc}</span></td><td>${tierBadge('T2')}</td><td class="mono">${cnt}</td><td>${link}</td></tr>`;
+  }).join('')||'<tr><td colspan="4" style="color:var(--muted)">No data</td></tr>';
+
+  // recent runs
+  const runs = summary.recent_batch_runs||[];
+  document.getElementById('recentRuns').innerHTML = runs.map(r =>
+    `<tr><td class="mono">${r.id}</td><td>${r.run_type}</td><td>${(r.started_at||'').slice(0,16)}</td><td style="color:var(--green)">+${r.total_committed||0}</td><td>${statusBadge(r.status)}</td></tr>`
+  ).join('')||'<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:20px">No runs yet</td></tr>';
+
+  document.getElementById('lastSync').textContent = 'Updated: ' + new Date().toLocaleTimeString();
+}
+
+// ── Pipeline ──
+async function startRun() {
+  const body = {
+    type: document.getElementById('runType').value,
+    source: document.getElementById('runSource').value||undefined,
+    limit: parseInt(document.getElementById('runLimit').value)||50,
+    dry_run: document.getElementById('runDry').checked,
+  };
+  await apiPost('/api/drug-batch/run', body);
+  document.getElementById('btnStop').disabled = false;
+  isRunning = true;
+  pollStatus();
+}
+async function stopRun() {
+  await apiPost('/api/drug-batch/stop', {});
+  isRunning = false;
+  document.getElementById('btnStop').disabled = true;
+}
+let _runStartTime = null;
+let _elapsedTimer = null;
+
+async function pollStatus() {
+  const d = await api('/api/drug-batch/status');
+  if (!d) return;
+  const cr = d.current_run;
+  const prog = d.progress||{};
+
+  if (cr) {
+    const statusIcon = cr.status==='running' ? '&#9679; ' : cr.status==='completed' ? '&#10003; ' : '&#10007; ';
+    const statusColor = cr.status==='running' ? 'var(--blue)' : cr.status==='completed' ? 'var(--green)' : 'var(--red)';
+    document.getElementById('pipelineStatus').innerHTML =
+      `<span style="color:${statusColor};font-weight:700">${statusIcon}Run #${cr.id}</span> &nbsp; <b>${cr.run_type}</b> &nbsp; <span class="badge badge-run">${cr.status}</span>`;
+    isRunning = cr.status === 'running';
+    document.getElementById('btnStop').disabled = !isRunning;
+
+    // elapsed timer
+    if (isRunning && !_runStartTime) {
+      _runStartTime = new Date(cr.started_at);
+      if (_elapsedTimer) clearInterval(_elapsedTimer);
+      _elapsedTimer = setInterval(()=>{
+        const sec = Math.floor((Date.now() - _runStartTime.getTime())/1000);
+        const m = Math.floor(sec/60), s = sec%60;
+        document.getElementById('pipelineElapsed').textContent = `${m}m ${String(s).padStart(2,'0')}s elapsed`;
+      }, 1000);
+    }
+    if (!isRunning && _elapsedTimer) { clearInterval(_elapsedTimer); _elapsedTimer=null; _runStartTime=null; }
+  } else {
+    document.getElementById('pipelineStatus').innerHTML = '<span style="color:var(--muted)">&#9744; No active run — click Run Now to start</span>';
+    document.getElementById('pipelineElapsed').textContent = '';
+    isRunning = false;
+    document.getElementById('btnStop').disabled = true;
+    if (_elapsedTimer) { clearInterval(_elapsedTimer); _elapsedTimer=null; _runStartTime=null; }
+  }
+
+  // phase counters
+  const f=prog.fetched||0, ei=prog.enriching||0, ed=prog.enriched||0, v=prog.validated||0, c=prog.committed||0, sk=prog.skipped||0, fl=prog.failed||0;
+  const total = Math.max(f+ei+ed+v+c+sk+fl, 1);
+  const done = c+sk;
+  const overallPct = cr ? Math.round((done/total)*100) : 0;
+
+  document.getElementById('phCollect').textContent = f;
+  document.getElementById('phEnrich').textContent = ei+ed;
+  document.getElementById('phValidate').textContent = v;
+  document.getElementById('phCommit').textContent = c;
+
+  document.getElementById('phCollectSub').textContent = f ? `${f} fetched` : '';
+  document.getElementById('phEnrichSub').innerHTML = (ei+ed) ? `<span style="color:var(--blue)">${ei} running</span> · ${ed} done` : '';
+  document.getElementById('phValidateSub').textContent = v ? `${v} passed` : '';
+  document.getElementById('phCommitSub').innerHTML = c ? `<span style="color:var(--green)">${c} saved</span>` : '';
+
+  // phase states
+  const phases = [
+    {el:'phaseCollect', bar:'barCollect', val:f, max:total, active:isRunning&&f>0&&(ei+ed)==0},
+    {el:'phaseEnrich',  bar:'barEnrich',  val:ei+ed, max:f||1, active:isRunning&&ei>0},
+    {el:'phaseValidate',bar:'barValidate',val:v, max:ed||1, active:isRunning&&v>0&&c==0},
+    {el:'phaseCommit',  bar:'barCommit',  val:c, max:v||1, active:isRunning&&c>0&&c<v},
+  ];
+  phases.forEach(p => {
+    const el = document.getElementById(p.el);
+    const bar = document.getElementById(p.bar);
+    el.className = 'phase ' + (p.val>0 && p.val>=p.max && !p.active ? 'done' : p.active ? 'active' : p.val>0 ? 'done' : 'idle');
+    bar.style.width = p.max>0 ? Math.min(100, Math.round(p.val/p.max*100))+'%' : '0';
+  });
+
+  // arrows color
+  document.querySelectorAll('.phase-arrow').forEach((a,i) => {
+    const prev = phases[i];
+    a.style.color = prev && prev.val>0 ? (phases[i].active?'var(--blue)':'var(--green)') : 'var(--border)';
+  });
+
+  // overall bar
+  document.getElementById('overallBar').style.width = overallPct+'%';
+  document.getElementById('overallPct').textContent = overallPct+'%';
+  document.getElementById('overallLabel').textContent = isRunning ? 'Processing...' : (cr ? (cr.status==='completed'?'Completed':'Stopped') : 'Idle');
+  if (!isRunning && cr && cr.status==='completed') {
+    document.getElementById('overallBar').style.background = 'var(--green)';
+  } else {
+    document.getElementById('overallBar').style.background = 'linear-gradient(90deg,var(--accent),var(--cyan))';
+  }
+
+  // summary line
+  const sumEl = document.getElementById('pipelineSummary');
+  if (fl>0 || sk>0) {
+    sumEl.style.display = 'flex';
+    sumEl.innerHTML =
+      (fl>0 ? `<span style="color:var(--red)">&#10007; ${fl} failed</span>` : '') +
+      (sk>0 ? `<span style="color:var(--yellow)">&#8631; ${sk} skipped</span>` : '') +
+      (c>0 ? `<span style="color:var(--green)">&#10003; ${c} committed</span>` : '');
+  } else {
+    sumEl.style.display = cr ? 'flex' : 'none';
+    sumEl.innerHTML = c>0 ? `<span style="color:var(--green)">&#10003; ${c} committed successfully</span>` : '';
+  }
+
+  // mode indicator
+  if (d.active_mode) updateModeIndicator(d.active_mode);
+
+  if (isRunning) setTimeout(pollStatus, 3000);
+}
+async function loadHistory() {
+  const d = await api('/api/drug-batch/history?limit=20');
+  if (!d) return;
+  document.getElementById('historyTable').innerHTML = (d.runs||[]).map(r => {
+    const isNight = (r.run_type||'').includes('night');
+    const typeIcon = isNight ? '&#127769; ' : '';
+    return `<tr><td class="mono">${r.id}</td><td>${typeIcon}${r.run_type}</td><td>${r.trigger||''}</td>
+     <td class="mono" style="font-size:9px">${r.llm_model||'-'}</td><td>${(r.started_at||'').slice(0,16)}</td>
+     <td>${r.total_fetched||0}</td><td>${r.total_enriched||0}</td>
+     <td style="color:var(--green)">${r.total_committed||0}</td>
+     <td style="color:var(--yellow)">${r.total_skipped||0}</td>
+     <td style="color:var(--red)">${r.total_failed||0}</td>
+     <td class="mono" style="color:var(--cyan)">${r.llm_tokens_used||0}</td>
+     <td class="mono">${r.duration_ms?((r.duration_ms/1000).toFixed(1)+'s'):'-'}</td><td>${statusBadge(r.status)}</td></tr>`;
+  }).join('')||'<tr><td colspan="13" style="color:var(--muted);text-align:center;padding:20px">No history</td></tr>';
+}
+
+// ── Staging ──
+let stgPage=1;
+async function loadStaging(page) {
+  stgPage = page||1;
+  const status = document.getElementById('stgStatus').value;
+  const q = `/api/drug-batch/staging?page=${stgPage}&per_page=20` + (status?`&status=${status}`:'');
+  const d = await api(q);
+  if (!d) return;
+  document.getElementById('stagingTable').innerHTML = (d.staging||[]).map(r =>
+    `<tr><td class="mono">${r.id}</td><td>${r.source}</td><td>${tierBadge(r.source_tier)}</td><td>${r.target_table}</td>
+     <td>${statusBadge(r.status)}</td><td>${confBar(r.confidence)}</td><td style="font-size:10px;color:var(--red);max-width:200px;overflow:hidden;text-overflow:ellipsis">${r.error||''}</td>
+     <td>${r.status==='validated'||r.status==='enriched'?`<button class="btn btn-sm" onclick="approveStg(${r.id})">Approve</button> <button class="btn btn-sm btn-danger" onclick="rejectStg(${r.id})">Reject</button>`:''}</td></tr>`
+  ).join('')||'<tr><td colspan="8" style="color:var(--muted);text-align:center;padding:20px">Empty</td></tr>';
+  document.getElementById('stagingPager').textContent = `Page ${d.page}/${d.total_pages} (${d.total} total)`;
+}
+async function approveStg(id) { await apiPost(`/api/drug-batch/staging/${id}/approve`,{}); loadStaging(stgPage); }
+async function rejectStg(id) { await apiPost(`/api/drug-batch/staging/${id}/reject`,{reason:'manual'}); loadStaging(stgPage); }
+
+// ── Provenance ──
+async function searchProvenance() {
+  const table = document.getElementById('provTable').value;
+  const key = document.getElementById('provKey').value.trim();
+  if (!key) return;
+  const d = await api(`/api/provenance/${table}/${key}/timeline`);
+  if (!d || (!d.current && !d.timeline?.length)) { alert('Not found'); return; }
+  document.getElementById('provResult').style.display = 'block';
+  const cur = d.current;
+  if (cur) {
+    const srcLink = cur.source_url
+      ? `<a href="${cur.source_url}" target="_blank" style="color:var(--accent);font-size:11px;text-decoration:none">${cur.source||''} ↗</a>`
+      : `<span class="mono">${cur.source||''}</span>`;
+    document.getElementById('provRecord').innerHTML =
+      `<div style="font-size:14px;font-weight:700;margin-bottom:6px">${cur.code||key} ${cur.name_ko||''} <span style="color:var(--muted);font-weight:400">(${cur.name_generic||''})</span></div>
+       <div style="font-size:11px;margin-bottom:4px">Source: ${tierBadge(cur.source_tier, cur.source, cur.source_url)} &nbsp; Confidence: ${confBar(cur.confidence)}</div>`;
+  }
+  document.getElementById('provTimeline').innerHTML = (d.timeline||[]).map(t => {
+    const cls = (t.action||'').toLowerCase();
+    const srcEl = t.source_url
+      ? `<a href="${t.source_url}" target="_blank" style="color:var(--accent);text-decoration:none;font-size:10px">${t.source} ↗</a>`
+      : `<span style="font-size:10px">${t.source}</span>`;
+    return `<div class="tl-item ${cls}"><div class="tl-date">${(t.at||'').replace('T',' ').slice(0,19)}</div>
+      <div class="tl-action">${t.action} ${tierBadge(t.source_tier)} ${srcEl}</div>
+      <div class="tl-detail">${t.summary||''} ${t.field?'→ '+t.field:''} ${t.batch_run_id?'(batch #'+t.batch_run_id+')':''}</div></div>`;
+  }).join('')||'<div style="color:var(--muted);font-size:11px">No history</div>';
+}
+async function loadRecentChanges() {
+  const d = await api('/api/provenance/recent?limit=30');
+  if (!d) return;
+  document.getElementById('recentChanges').innerHTML = (d.changes||[]).map(r => {
+    const srcEl = r.source_url
+      ? `<a href="${r.source_url}" target="_blank" style="color:var(--accent);text-decoration:none;font-size:10px">${r.source} ↗</a>`
+      : r.source;
+    return `<tr><td class="mono" style="font-size:10px">${(r.created_at||'').slice(0,16)}</td><td>${r.table_name}</td><td class="mono">${r.record_key}</td>
+     <td>${r.action}</td><td>${r.field||'-'}</td><td>${srcEl}</td><td>${tierBadge(r.source_tier)}</td></tr>`;
+  }).join('');
+}
+
+// ── Settings ──
+async function loadSettings() {
+  const d = await api('/api/drug-batch/schedule');
+  if (!d) return;
+  const s = d.schedules||{};
+  document.getElementById('scheduleTable').innerHTML = Object.entries(s).map(([k,v]) =>
+    `<tr><td class="mono">${k}</td><td>${v.interval}</td><td>${String(v.hour||0).padStart(2,'0')}:${String(v.minute||0).padStart(2,'0')}</td></tr>`
+  ).join('');
+
+  // Night mode settings
+  const nm = d.night_mode||{};
+  renderNightToggle(nm.enabled);
+  const h = nm.hours||[22,6];
+  document.getElementById('nmHours').textContent = `${h[0]}:00 ~ ${h[1]}:00`;
+  document.getElementById('nmLimit').textContent = nm.limit||200;
+  document.getElementById('nmModel').textContent = nm.model||'-';
+  document.getElementById('nmPriority').textContent = nm.priority||3;
+  document.getElementById('nmInterval').textContent = (nm.interval_minutes||30)+'min';
+  document.getElementById('nmMaxRuns').textContent = nm.max_runs_per_night||10;
+  document.getElementById('nmTimeout').textContent = (nm.poll_timeout||600)+'s';
+
+  const st = await api('/api/drug-batch/stats');
+  if (st) {
+    document.getElementById('dbInfo').innerHTML =
+      `Drug Codes: <b>${st.drug_codes?.total||0}</b> | Interactions: <b>${st.drug_interactions?.total||0}</b> | Denials: <b>${st.denial_reasons?.total||0}</b><br>
+       Avg Confidence: <b>${(st.avg_confidence||0).toFixed(2)}</b> | By Tier: ${Object.entries(st.by_tier||{}).map(([k,v])=>`${k}:${v}`).join(', ')}`;
+  }
+}
+
+function renderNightToggle(enabled) {
+  const tog = document.getElementById('nightToggle');
+  const knob = document.getElementById('nightToggleKnob');
+  const label = document.getElementById('nightToggleLabel');
+  if (enabled) {
+    tog.style.background = 'var(--accent)';
+    knob.style.left = '22px';
+    label.textContent = 'ON';
+    label.style.color = 'var(--accent)';
+  } else {
+    tog.style.background = 'var(--border)';
+    knob.style.left = '2px';
+    label.textContent = 'OFF';
+    label.style.color = 'var(--muted)';
+  }
+}
+
+async function toggleNight() {
+  const d = await apiPost('/api/drug-batch/night-mode', {});
+  if (d) renderNightToggle(d.night_mode_enabled);
+}
+
+// ── Mode indicator (Pipeline tab) ──
+function updateModeIndicator(mode) {
+  const el = document.getElementById('modeIndicator');
+  if (!mode) { el.innerHTML = ''; return; }
+  if (mode.mode === 'night') {
+    el.innerHTML = `<span style="font-size:16px">&#127769;</span>
+      <span style="color:var(--accent);font-weight:700">Night Mode</span>
+      <span style="color:var(--muted)">limit ${mode.limit} · ${mode.model} · p${mode.priority}</span>
+      <span style="color:var(--muted)">${mode.runs_tonight||0}/${mode.max_runs} runs</span>`;
+  } else {
+    el.innerHTML = `<span style="font-size:16px">&#9728;&#65039;</span>
+      <span style="color:var(--muted);font-weight:600">Day Mode</span>
+      <span style="color:var(--muted)">limit ${mode.limit} · ${mode.model} · p${mode.priority}</span>`;
+  }
+  // auto-fill limit from mode
+  const limInput = document.getElementById('runLimit');
+  if (limInput.value === '50' || limInput.value === '200') limInput.value = mode.limit;
+}
+
+// ── Init ──
+loadOverview();
+setInterval(()=>{ if(document.getElementById('panel-overview').classList.contains('active')) loadOverview(); }, 30000);
+
+// fetch mode on load
+api('/api/drug-batch/status').then(d => { if(d?.active_mode) updateModeIndicator(d.active_mode); });
+</script>
+</body>
+</html>

@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Game NPC Admin — WeRU.B</title>
+<style>
+:root {
+  --bg: #0f1117; --surface: #1a1d27; --card: #1e2130; --border: #2a2d3a;
+  --text: #e4e4e7; --muted: #71717a; --accent: #6366f1; --accent-hover: #818cf8;
+  --success: #22c55e; --warning: #f59e0b; --danger: #ef4444; --pink: #ec4899;
+  --sidebar-w: 240px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; }
+
+/* 사이드바 */
+.sidebar { width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border); padding: 20px 0; position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; }
+.sidebar-title { padding: 0 20px 20px; font-size: 18px; font-weight: 700; color: var(--accent); border-bottom: 1px solid var(--border); }
+.sidebar-title small { display: block; font-size: 11px; color: var(--muted); font-weight: 400; margin-top: 4px; }
+.nav-group { padding: 16px 0 0; }
+.nav-group-title { padding: 0 20px 8px; font-size: 11px; text-transform: uppercase; color: var(--muted); letter-spacing: 1px; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; cursor: pointer; color: var(--muted); transition: all 0.15s; font-size: 14px; }
+.nav-item:hover { background: rgba(99,102,241,0.1); color: var(--text); }
+.nav-item.active { background: rgba(99,102,241,0.15); color: var(--accent); border-right: 3px solid var(--accent); }
+.nav-item .icon { width: 20px; text-align: center; }
+.nav-back { margin-top: auto; padding: 16px 20px; border-top: 1px solid var(--border); }
+.nav-back a { color: var(--muted); text-decoration: none; font-size: 13px; }
+.nav-back a:hover { color: var(--text); }
+
+/* 메인 */
+.main { margin-left: var(--sidebar-w); flex: 1; padding: 24px 32px; }
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+.page-header h1 { font-size: 24px; }
+.page-header .badge { padding: 4px 12px; border-radius: 12px; font-size: 12px; background: var(--accent); color: #fff; }
+
+/* 카드 */
+.stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+.stat-card .label { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+.stat-card .value { font-size: 28px; font-weight: 700; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 16px; }
+.card h2 { font-size: 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+/* 폼 */
+.form-row { display: flex; gap: 12px; margin-bottom: 12px; align-items: center; }
+.form-row label { min-width: 100px; font-size: 13px; color: var(--muted); }
+.input { padding: 10px 14px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; font-size: 14px; width: 100%; }
+.input:focus { outline: none; border-color: var(--accent); }
+select.input { appearance: none; }
+textarea.input { resize: vertical; min-height: 80px; }
+
+/* 버튼 */
+.btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.15s; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-success { background: var(--success); color: #fff; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-pink { background: var(--pink); color: #fff; }
+.btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+.btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+.btn-sm { padding: 6px 14px; font-size: 12px; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* 테이블 */
+.table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.table th { text-align: left; padding: 10px 12px; border-bottom: 2px solid var(--border); color: var(--muted); font-weight: 600; }
+.table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.table tr:hover td { background: rgba(99,102,241,0.05); }
+
+/* 채팅 */
+.chat-box { height: 400px; overflow-y: auto; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+.chat-msg { max-width: 80%; padding: 12px 16px; border-radius: 16px; font-size: 14px; line-height: 1.6; word-break: break-word; }
+.chat-user { background: var(--accent); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
+.chat-npc { background: var(--surface); border: 1px solid var(--border); align-self: flex-start; border-bottom-left-radius: 4px; }
+.chat-system { color: var(--muted); font-size: 12px; text-align: center; align-self: center; }
+.chat-meta { font-size: 11px; color: var(--muted); margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
+.chat-input { display: flex; gap: 8px; margin-top: 12px; }
+.chat-input input { flex: 1; }
+
+/* 태그 */
+.tag { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 11px; margin: 2px; }
+.tag-blue { background: rgba(99,102,241,0.2); color: var(--accent); }
+.tag-green { background: rgba(34,197,94,0.2); color: var(--success); }
+.tag-red { background: rgba(239,68,68,0.2); color: var(--danger); }
+.tag-pink { background: rgba(236,72,153,0.2); color: var(--pink); }
+
+/* 페이지 전환 */
+.page { display: none; }
+.page.active { display: block; }
+
+/* 로딩 */
+.loading { text-align: center; padding: 40px; color: var(--muted); }
+
+/* 반응형 */
+@media (max-width: 768px) {
+  .sidebar { width: 60px; }
+  .sidebar-title, .nav-group-title, .nav-item span { display: none; }
+  .nav-item { justify-content: center; padding: 12px; }
+  .main { margin-left: 60px; padding: 16px; }
+}
+</style>
+</head>
+<body>
+
+<!-- 사이드바 -->
+<aside class="sidebar">
+  <div class="sidebar-title">
+    🎮 Game NPC<br>
+    <small>Admin Console</small>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-title">관리</div>
+    <div class="nav-item active" onclick="goPage('dashboard')"><span class="icon">📊</span><span>대시보드</span></div>
+    <div class="nav-item" onclick="goPage('tenants')"><span class="icon">🏢</span><span>게임사</span></div>
+    <div class="nav-item" onclick="goPage('templates')"><span class="icon">⚔️</span><span>NPC 템플릿</span></div>
+    <div class="nav-item" onclick="goPage('shared')"><span class="icon">🌐</span><span>공유 NPC</span></div>
+    <div class="nav-item" onclick="goPage('heroines')"><span class="icon">💕</span><span>히로인</span></div>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-title">테스트</div>
+    <div class="nav-item" onclick="goPage('chat')"><span class="icon">💬</span><span>NPC 대화</span></div>
+    <div class="nav-item" onclick="goPage('heroine-chat')"><span class="icon">💗</span><span>히로인 대화</span></div>
+    <div class="nav-item" onclick="goPage('scenario')"><span class="icon">📜</span><span>시나리오</span></div>
+    <div class="nav-item" onclick="goPage('illustrate')"><span class="icon">🎨</span><span>일러스트</span></div>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-title">데이터</div>
+    <div class="nav-item" onclick="goPage('logs')"><span class="icon">📋</span><span>대화 로그</span></div>
+    <div class="nav-item" onclick="goPage('world')"><span class="icon">🌍</span><span>세계관</span></div>
+  </div>
+
+  <div class="nav-back">
+    <a href="/">← Ollama Admin</a>
+  </div>
+</aside>
+
+<!-- 메인 콘텐츠 -->
+<div class="main">
+
+  <!-- 대시보드 -->
+  <div id="page-dashboard" class="page active">
+    <div class="page-header"><h1>📊 대시보드</h1><span class="badge" id="versionBadge">v2.22.0</span></div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="label">게임사</div><div class="value" id="dTenants">-</div></div>
+      <div class="stat-card"><div class="label">NPC 템플릿</div><div class="value" id="dTemplates">-</div></div>
+      <div class="stat-card"><div class="label">공유 NPC</div><div class="value" id="dShared">-</div></div>
+      <div class="stat-card"><div class="label">히로인</div><div class="value" id="dHeroines">-</div></div>
+    </div>
+  </div>
+
+  <!-- 게임사 관리 -->
+  <div id="page-tenants" class="page">
+    <div class="page-header"><h1>🏢 게임사 관리</h1></div>
+    <div class="card">
+      <h2>새 게임사 등록</h2>
+      <div class="form-row">
+        <label>게임명</label>
+        <input id="tName" class="input" placeholder="게임/프로젝트명" style="flex:2">
+      </div>
+      <div class="form-row">
+        <label>요금제</label>
+        <select id="tPlan" class="input" style="flex:1">
+          <option value="basic">Basic (100건/일)</option>
+          <option value="standard">Standard (500건/일)</option>
+          <option value="premium">Premium (2,000건/일)</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="registerTenant()">+ 등록</button>
+    </div>
+    <div class="card">
+      <h2>등록된 게임사</h2>
+      <div id="tenantList"></div>
+    </div>
+  </div>
+
+  <!-- NPC 템플릿 -->
+  <div id="page-templates" class="page">
+    <div class="page-header">
+      <h1>⚔️ NPC 템플릿</h1>
+      <div style="display:flex;gap:8px">
+        <select id="tplGameSel" class="input" style="width:200px" onchange="loadTemplates()"></select>
+        <button class="btn btn-primary" onclick="autoGenNPC()">🤖 AI 자동 생성</button>
+      </div>
+    </div>
+    <div id="templateList"></div>
+  </div>
+
+  <!-- 공유 NPC -->
+  <div id="page-shared" class="page">
+    <div class="page-header"><h1>🌐 공유 NPC</h1></div>
+    <div id="sharedList"></div>
+  </div>
+
+  <!-- 히로인 -->
+  <div id="page-heroines" class="page">
+    <div class="page-header">
+      <h1>💕 히로인</h1>
+      <button class="btn btn-pink" onclick="autoGenHeroine()">🤖 AI 자동 생성</button>
+    </div>
+    <div id="heroineList"></div>
+  </div>
+
+  <!-- NPC 대화 테스트 -->
+  <div id="page-chat" class="page">
+    <div class="page-header"><h1>💬 NPC 대화 테스트</h1></div>
+    <div class="card">
+      <div class="form-row">
+        <label>NPC</label>
+        <select id="chatNPC" class="input" style="flex:1"></select>
+        <label style="min-width:80px">플레이어</label>
+        <input id="chatPlayer" class="input" value="test-001" style="flex:1">
+        <input id="chatPlayerName" class="input" value="모험가" style="flex:1" placeholder="이름">
+      </div>
+      <div class="chat-box" id="chatBox">
+        <div class="chat-system">NPC를 선택하고 대화를 시작하세요</div>
+      </div>
+      <div class="chat-input">
+        <input id="chatMsg" class="input" placeholder="메시지 입력..." onkeydown="if(event.key==='Enter')sendChat()">
+        <button class="btn btn-primary" onclick="sendChat()">전송</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 히로인 대화 -->
+  <div id="page-heroine-chat" class="page">
+    <div class="page-header"><h1>💗 히로인 대화</h1></div>
+    <div class="card">
+      <div class="form-row">
+        <label>히로인</label>
+        <select id="hChatHeroine" class="input" style="flex:1"></select>
+        <label style="min-width:80px">플레이어</label>
+        <input id="hChatPlayer" class="input" value="test-001" style="flex:1">
+        <input id="hChatName" class="input" value="주인공" style="flex:1" placeholder="이름">
+      </div>
+      <div class="chat-box" id="hChatBox">
+        <div class="chat-system">히로인을 선택하고 대화를 시작하세요</div>
+      </div>
+      <div class="chat-input">
+        <input id="hChatMsg" class="input" placeholder="메시지 입력..." onkeydown="if(event.key==='Enter')sendHChat()">
+        <div style="display:flex;gap:4px">
+          <button class="btn btn-primary" onclick="sendHChat()">전송</button>
+          <button class="btn btn-pink btn-sm" onclick="sendHChat('gift')">🎁</button>
+          <button class="btn btn-danger btn-sm" onclick="sendHChat('confess')">💌</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 시나리오 -->
+  <div id="page-scenario" class="page">
+    <div class="page-header"><h1>📜 시나리오 생성</h1></div>
+    <div class="card">
+      <div class="form-row">
+        <label>테마</label>
+        <input id="scnTheme" class="input" placeholder="마족 소탕, 보물 탐색, 호위 임무 등">
+      </div>
+      <div class="form-row">
+        <label>난이도</label>
+        <select id="scnDiff" class="input" style="width:150px">
+          <option value="easy">쉬움</option><option value="normal" selected>보통</option><option value="hard">어려움</option>
+        </select>
+        <label style="min-width:80px">플레이어</label>
+        <input id="scnPlayer" class="input" value="test-001" style="flex:1">
+      </div>
+      <button class="btn btn-primary" onclick="generateScenario()">🎲 시나리오 생성</button>
+      <div id="scnResult" style="margin-top:16px"></div>
+    </div>
+  </div>
+
+  <!-- 일러스트 -->
+  <div id="page-illustrate" class="page">
+    <div class="page-header"><h1>🎨 일러스트 생성</h1></div>
+    <div class="card">
+      <div class="form-row">
+        <label>유형</label>
+        <select id="illType" class="input" style="width:150px">
+          <option value="character">캐릭터</option><option value="scene">장면</option>
+        </select>
+      </div>
+      <div id="illCharFields">
+        <div class="form-row">
+          <label>NPC</label>
+          <select id="illNPC" class="input"></select>
+        </div>
+        <div class="form-row">
+          <label>포즈</label>
+          <input id="illPose" class="input" value="portrait" placeholder="portrait, battle stance 등">
+        </div>
+      </div>
+      <div id="illSceneFields" style="display:none">
+        <div class="form-row">
+          <label>설명</label>
+          <textarea id="illDesc" class="input" placeholder="달빛 아래 고대 던전 입구..."></textarea>
+        </div>
+        <div class="form-row">
+          <label>분위기</label>
+          <input id="illMood" class="input" placeholder="mysterious, dark, bright">
+        </div>
+      </div>
+      <div class="form-row">
+        <label>스타일</label>
+        <select id="illStyle" class="input" style="width:200px">
+          <option value="anime">Anime</option><option value="concept-art">Concept Art</option>
+          <option value="pixel-art-character">Pixel Art</option><option value="illustration">Illustration</option>
+          <option value="photorealistic">Photorealistic</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="generateIllust()">🎨 생성</button>
+      <div id="illResult" style="margin-top:16px"></div>
+    </div>
+  </div>
+
+  <!-- 대화 로그 -->
+  <div id="page-logs" class="page">
+    <div class="page-header"><h1>📋 대화 로그</h1></div>
+    <div class="card">
+      <div class="form-row">
+        <label>플레이어</label>
+        <input id="logPlayer" class="input" placeholder="player_id" style="flex:1">
+        <button class="btn btn-primary" onclick="loadLogs()">조회</button>
+      </div>
+      <div id="logList" style="margin-top:16px"></div>
+    </div>
+  </div>
+
+  <!-- 세계관 -->
+  <div id="page-world" class="page">
+    <div class="page-header"><h1>🌍 세계관 설정</h1></div>
+    <div class="card">
+      <h2>설정 추가</h2>
+      <div class="form-row">
+        <label>제목</label>
+        <input id="worldTitle" class="input" placeholder="마족 전쟁의 역사">
+      </div>
+      <div class="form-row">
+        <label>카테고리</label>
+        <select id="worldCat" class="input" style="width:150px">
+          <option value="history">역사</option><option value="geography">지리</option>
+          <option value="faction">세력</option><option value="race">종족</option>
+          <option value="magic">마법</option><option value="item">아이템</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>내용</label>
+        <textarea id="worldContent" class="input" rows="5" placeholder="세계관 설정 내용..."></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="addWorld()">등록 (RAG 색인)</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// === Config ===
+const BASE = (() => {
+  const p = window.location.pathname.replace(/\/game-admin\/?$/, '').replace(/\/+$/, '');
+  return p || '';
+})();
+function api(path) { return BASE + path; }
+
+let _tenants = [];
+let _currentKey = '';
+
+// === Navigation ===
+function goPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const page = document.getElementById('page-' + name);
+  if (page) page.classList.add('active');
+  // Highlight nav
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.getAttribute('onclick') && n.getAttribute('onclick').includes("'" + name + "'")) n.classList.add('active');
+  });
+  // Auto-load data
+  if (name === 'dashboard') loadDashboard();
+  if (name === 'tenants') loadTenants();
+  if (name === 'templates') loadTemplates();
+  if (name === 'shared') loadShared();
+  if (name === 'heroines') loadHeroines();
+  if (name === 'chat') loadChatNPCs();
+  if (name === 'heroine-chat') loadChatHeroines();
+  if (name === 'illustrate') { loadIllustNPCs(); document.getElementById('illType').onchange = toggleIllFields; }
+}
+
+// === Dashboard ===
+async function loadDashboard() {
+  try {
+    const r = await fetch(api('/api/game/tenants'));
+    const d = await r.json();
+    _tenants = d.tenants || [];
+    document.getElementById('dTenants').textContent = _tenants.length;
+    if (_tenants.length > 0) _currentKey = _tenants[0].api_key;
+    // Selects
+    ['tplGameSel'].forEach(id => {
+      const s = document.getElementById(id);
+      if (s) { s.innerHTML = ''; _tenants.forEach(t => { s.innerHTML += `<option value="${t.api_key}">${t.name}</option>`; }); }
+    });
+    // Stats
+    let tpl=0, shared=0, heroine=0;
+    for (const t of _tenants) {
+      try { const r = await fetch(api('/api/game/npc/templates'), {headers:{'X-Game-Key':t.api_key}}); tpl += ((await r.json()).templates||[]).length; } catch{}
+      try { const r = await fetch(api('/api/game/shared/npcs'), {headers:{'X-Game-Key':t.api_key}}); shared += ((await r.json()).shared_npcs||[]).length; } catch{}
+      try { const r = await fetch(api('/api/game/heroine/list'), {headers:{'X-Game-Key':t.api_key}}); heroine += ((await r.json()).heroines||[]).length; } catch{}
+    }
+    document.getElementById('dTemplates').textContent = tpl;
+    document.getElementById('dShared').textContent = shared;
+    document.getElementById('dHeroines').textContent = heroine;
+  } catch(e) { console.error(e); }
+}
+
+// === Tenants ===
+async function loadTenants() {
+  const r = await fetch(api('/api/game/tenants'));
+  const d = await r.json();
+  _tenants = d.tenants || [];
+  let html = '<table class="table"><tr><th>게임명</th><th>플랜</th><th>API Key</th><th>ID</th></tr>';
+  _tenants.forEach(t => {
+    html += `<tr><td><b>${t.name}</b></td><td><span class="tag tag-blue">${t.plan}</span></td><td><code style="font-size:11px">${t.api_key}</code></td><td style="color:var(--muted);font-size:11px">${t.id}</td></tr>`;
+  });
+  html += '</table>';
+  document.getElementById('tenantList').innerHTML = _tenants.length ? html : '<div style="color:var(--muted)">등록된 게임사 없음</div>';
+}
+
+async function registerTenant() {
+  const name = document.getElementById('tName').value.trim();
+  if (!name) return alert('게임명을 입력하세요');
+  const plan = document.getElementById('tPlan').value;
+  const r = await fetch(api('/api/game/register'), {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name, plan})});
+  const d = await r.json();
+  if (d.api_key) {
+    alert(`등록 완료!\n\nAPI Key:\n${d.api_key}\n\n이 키를 X-Game-Key 헤더로 사용합니다.`);
+    document.getElementById('tName').value = '';
+    loadTenants();
+    loadDashboard();
+  } else alert('실패: ' + (d.error||''));
+}
+
+// === Templates ===
+async function loadTemplates() {
+  const gkey = document.getElementById('tplGameSel')?.value || _currentKey;
+  if (!gkey) { document.getElementById('templateList').innerHTML = '<div style="color:var(--muted)">게임사를 선택하세요</div>'; return; }
+  const r = await fetch(api('/api/game/npc/templates'), {headers:{'X-Game-Key':gkey}});
+  const d = await r.json();
+  let html = '';
+  (d.templates||[]).forEach(t => {
+    const p = t.personality || {};
+    const stats = t.base_stats || {};
+    html += `<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:start">
+        <div><h2>${t.name} <span style="color:var(--muted);font-size:13px">${t.class||''} Lv.${t.base_level||1}</span></h2></div>
+        <div>${t.is_shared ? '<span class="tag tag-green">공유</span>' : ''}</div>
+      </div>
+      <div style="font-size:13px;margin-bottom:8px">${(p.traits||[]).map(x=>'<span class="tag tag-blue">'+x+'</span>').join('')}</div>
+      <div style="font-size:13px;color:var(--muted)">말투: ${p.speech_style||'-'} | 배경: ${(t.background||'').substring(0,60)}...</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:8px">STR:${stats.strength||'-'} INT:${stats.intelligence||'-'} CHA:${stats.charisma||'-'} WIS:${stats.wisdom||'-'}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">ID: ${t.id}</div>
+    </div>`;
+  });
+  document.getElementById('templateList').innerHTML = html || '<div style="color:var(--muted)">NPC 없음</div>';
+}
+
+async function autoGenNPC() {
+  const gkey = document.getElementById('tplGameSel')?.value || _currentKey;
+  if (!gkey) return alert('게임사를 선택하세요');
+  const cls = prompt('클래스 (기사, 마법사, 도적, 궁수, 힐러 등):');
+  if (!cls) return;
+  document.getElementById('templateList').innerHTML = '<div class="loading">🤖 AI가 NPC를 생성하고 있습니다...</div>';
+  const r = await fetch(api('/api/game/npc/template/generate'), {method:'POST', headers:{'Content-Type':'application/json','X-Game-Key':gkey}, body:JSON.stringify({class:cls,genre:'fantasy'})});
+  const d = await r.json();
+  if (d.generated && confirm(`생성된 NPC:\n${d.generated.name} (${cls})\n성격: ${(d.generated.personality||'').substring(0,40)}\n\n등록할까요?`)) {
+    d.generated.class = cls;
+    await fetch(api('/api/game/npc/template'), {method:'POST', headers:{'Content-Type':'application/json','X-Game-Key':gkey}, body:JSON.stringify(d.generated)});
+    loadTemplates(); loadDashboard();
+  } else loadTemplates();
+}
+
+// === Shared NPC ===
+async function loadShared() {
+  if (!_currentKey) return;
+  const r = await fetch(api('/api/game/shared/npcs'), {headers:{'X-Game-Key':_currentKey}});
+  const d = await r.json();
+  let html = '';
+  (d.shared_npcs||[]).forEach(n => {
+    const mc = (n.mood_score||50) > 60 ? 'var(--success)' : (n.mood_score||50) < 40 ? 'var(--danger)' : 'var(--muted)';
+    html += `<div class="card">
+      <div style="display:flex;justify-content:space-between">
+        <h2>${n.name||'?'} <span style="font-size:13px;color:var(--muted)">${n.class||''}</span></h2>
+        <div style="color:${mc};font-weight:bold;font-size:18px">${n.mood||'평온'} (${n.mood_score||50})</div>
+      </div>
+      <div style="font-size:13px;color:var(--muted)">총 상호작용: ${n.total_interactions||0}회</div>
+    </div>`;
+  });
+  document.getElementById('sharedList').innerHTML = html || '<div class="card" style="color:var(--muted)">공유 NPC가 없습니다. NPC 템플릿에서 공유로 지정하세요.</div>';
+}
+
+// === Heroines ===
+async function loadHeroines() {
+  if (!_currentKey) return;
+  const r = await fetch(api('/api/game/heroine/list'), {headers:{'X-Game-Key':_currentKey}});
+  const d = await r.json();
+  let html = '';
+  (d.heroines||[]).forEach(h => {
+    html += `<div class="card">
+      <h2 style="color:var(--pink)">${h.name} <span style="font-size:13px;color:var(--muted)">${h.age||'?'}세</span></h2>
+      <div style="font-size:13px;margin-bottom:4px">${h.personality||''}</div>
+      <div style="font-size:12px;color:var(--muted)">좋아함: ${h.likes||'-'}</div>
+      <div style="font-size:12px;color:var(--muted)">싫어함: ${h.dislikes||'-'}</div>
+      <div style="font-size:12px;color:var(--muted)">이상형: ${h.ideal_type||'-'}</div>
+      <div style="font-size:12px;color:var(--muted)">말투: <span class="tag tag-pink">${h.voice_style||''}</span></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">ID: ${h.id}</div>
+    </div>`;
+  });
+  document.getElementById('heroineList').innerHTML = html || '<div class="card" style="color:var(--muted)">히로인이 없습니다.</div>';
+}
+
+async function autoGenHeroine() {
+  if (!_currentKey) return alert('게임사가 없습니다');
+  const archetype = prompt('히로인 유형 (츤데레, 쿨뷰티, 소꿉친구, 후배, 얀데레 등):');
+  if (!archetype) return;
+  document.getElementById('heroineList').innerHTML = '<div class="loading">🤖 AI가 히로인을 생성하고 있습니다...</div>';
+  const r = await fetch(api('/api/game/heroine/generate'), {method:'POST', headers:{'Content-Type':'application/json','X-Game-Key':_currentKey}, body:JSON.stringify({archetype})});
+  const d = await r.json();
+  if (d.generated && confirm(`생성된 히로인:\n${d.generated.name} (${archetype})\n${(d.generated.personality||'').substring(0,50)}\n\n등록할까요?`)) {
+    await fetch(api('/api/game/heroine/create'), {method:'POST', headers:{'Content-Type':'application/json','X-Game-Key':_currentKey}, body:JSON.stringify(d.generated)});
+    loadHeroines(); loadDashboard();
+  } else loadHeroines();
+}
+
+// === Chat ===
+async function loadChatNPCs() {
+  if (!_currentKey) return;
+  const sel = document.getElementById('chatNPC');
+  sel.innerHTML = '<option value="">NPC 선택</option>';
+  const r = await fetch(api('/api/game/npc/templates'), {headers:{'X-Game-Key':_currentKey}});
+  const d = await r.json();
+  (d.templates||[]).forEach(t => { sel.innerHTML += `<option value="${t.id}">⚔️ ${t.name} (${t.class||''})</option>`; });
+}
+
+function addMsg(boxId, type, html) {
+  const box = document.getElementById(boxId);
+  const div = document.createElement('div');
+  div.className = 'chat-msg chat-' + type;
+  div.innerHTML = html;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+  return div;
+}
+
+async function sendChat() {
+  const npcId = document.getElementById('chatNPC').value;
+  const msg = document.getElementById('chatMsg').value.trim();
+  const pid = document.getElementById('chatPlayer').value || 'test-001';
+  const pname = document.getElementById('chatPlayerName').value || '모험가';
+  if (!npcId || !msg) return;
+  addMsg('chatBox', 'user', msg);
+  document.getElementById('chatMsg').value = '';
+  const loading = addMsg('chatBox', 'system', '⏳ 응답 생성 중...');
+  try {
+    const r = await fetch(api('/api/game/dialogue/player'), {method:'POST', headers:{'Content-Type':'application/json','X-Game-Key':_currentKey}, body:JSON.stringify({player_id:pid, npc_id:npcId, message:msg, player_name:pname})});
+    const d = await r.json();
+    loading.remove();
+    let meta = '';
+    if (d.exp_earned) meta += `EXP +${d.exp_earned}`;
+    if (d.level_up) meta += ` | 🎉 레벨업! Lv.${d.level_up.new}`;
+    addMsg('chatBox', 'npc', `<b>${d.npc||'NPC'}</b> <span style="color:var(--muted);font-size:11px">Lv.${d.level||'?'}</span><br>${d.response||''}`
+      + (meta ? `<div class="chat-meta">${meta}</div>` : ''));
+  } catch(e) { loading.remove(); addMsg('chatBox', 'npc', '❌ 오류: ' + e.message); }
+}
+
+// === Heroine Chat ===
+async function loadChatHeroines() {
+  if (!_currentKey) return;
+  const sel = document.getElementById('hChatHeroine');
+  sel.innerHTML = '<option value="">히로인 선택</option>';
+  const r = await fetch(api('/api/game/heroine/list'), {headers:{'X-Game-Key':_currentKey}});
+  const d = await r.json();
+  (d.heroines||[]).forEach(h => { sel.innerHTML += `<option value="${h.id}">💕 ${h.name} (${(h.personality||'').substring(0,15)})</option>`; });
+}
+
+async function sendHChat(special) {
+  const hid = document.getElementById('hChatHeroine').value;
+  const pid = document.getElementById('hChatPlayer').value || 'test-001';
+  const pname = document.getElementById('hChatName').value || '주인공';
+  let msg = document.getElementById('hChatMsg').value.trim();
+
+  if (special === 'gift') {
+    const gift = prompt('선물 이름:');
+    if (!gift) return;
+    addMsg('hChatBox', 'user', `🎁 선물: ${gift}`);
+    const loading = addMsg('hChatBox', 'system', '⏳ 반응 생성 중...');
+    try {
+      const r = await fetch(api('/api/game/heroine/gift'), {method:'POST', headers:{'Content-Type':'application/json','X-Game-Key':_currentKey}, body:JSON.stringify({player_id:pid, heroine_id:hid, gift, player_name:pname})});
+      const d = await r.json();
+      loading.remove();
+      addMsg('hChatBox', 'npc', `<b>${d.heroine||'?'}</b><br>${d.reaction||''}<div class="chat-meta">${d.liked?'❤️ 좋아함':'💔 별로'} | 호감: ${d.affinity?.after||'?'} (${d.affinity?.stage||''})</div>`);
+    } catch(e) { loading.remove(); addMsg('hChatBox', 'npc', '❌ ' + e.message); }
+    return;
+  }
+
+  if (special === 'confess') {
+    const conf = prompt('고백 메시지:', '좋아해');
+    if (!conf) return;
+    addMsg('hChatBox', 'user', `💌 고백: ${conf}`);
+    const loading = addMsg('hChatBox', 'system', '⏳ ...');
+    try {
+      const r = await fetch(api('/api/game/heroine/confess'), {method:'POST', headers:{'Content-Type':'application/json','X-Game-Key':_currentKey}, body:JSON.stringify({player_id:pid, heroine_id:hid, confession_message:conf, player_name:pname})});
+      const d = await r.json();
+      loading.remove();
+      const resultEmoji = {accept:'💕 수락!', pending:'🤔 보류...', reject_gentle:'😢 부드러운 거절', reject_hard:'💔 거절'}[d.result] || d.result;
+      addMsg('hChatBox', 'npc', `<b>${d.heroine||'?'}</b><br>${d.response||''}<div class="chat-meta">${resultEmoji} | 호감: ${d.affinity?.after||'?'} (${d.affinity?.stage||''})</div>`);
+    } catch(e) { loading.remove(); addMsg('hChatBox', 'npc', '❌ ' + e.message); }
+    return;
+  }
+
+  if (!hid || !msg) return;
+  addMsg('hChatBox', 'user', msg);
+  document.getElementById('hChatMsg').value = '';
+  const loading = addMsg('hChatBox', 'system', '⏳ 응답 생성 중...');
+  try {
+    const r = await fetch(api('/api/game/heroine/talk'), {method:'POST', headers:{'Content-Type':'application/json','X-Game-Key':_currentKey}, body:JSON.stringify({player_id:pid, heroine_id:hid, message:msg, player_name:pname})});
+    const d = await r.json();
+    loading.remove();
+    let meta = `호감: ${d.affinity?.value||'?'} (${d.affinity?.stage||''}) +${d.affinity?.change||0} | 신뢰: ${d.trust||'?'}`;
+    if (d.stage_change) meta += ` | 🎉 ${d.stage_change.from} → ${d.stage_change.to}`;
+    addMsg('hChatBox', 'npc', `<b style="color:var(--pink)">${d.heroine||'?'}</b><br>${d.response||''}<div class="chat-meta">${meta}</div>`);
+  } catch(e) { loading.remove(); addMsg('hChatBox', 'npc', '❌ ' + e.message); }
+}
+
+// === Scenario ===
+async function generateScenario() {
+  const theme = document.getElementById('scnTheme').value;
+  const diff = document.getElementById('scnDiff').value;
+  const pid = document.getElementById('scnPlayer').value || 'test-001';
+  document.getElementById('scnResult').innerHTML = '<div class="loading">🎲 시나리오 생성 중...</div>';
+  try {
+    const r = await fetch(api('/api/game/scenario/generate'), {method:'POST', headers:{'Content-Type':'application/json','X-Game-Key':_currentKey}, body:JSON.stringify({player_id:pid, theme, difficulty:diff, branch_count:3})});
+    const d = await r.json();
+    let html = `<div class="card"><h2>📜 ${d.title||'시나리오'}</h2><p>${d.synopsis||''}</p>`;
+    if (d.objectives) { html += '<h3 style="margin-top:12px">목표</h3><ul>'; d.objectives.forEach(o => { html += `<li>${o.text} <span class="tag tag-green">+${o.reward_exp} EXP</span></li>`; }); html += '</ul>'; }
+    if (d.branches) { html += '<h3 style="margin-top:12px">분기</h3>'; d.branches.forEach(b => { html += `<div style="margin:4px 0;padding:8px;background:var(--bg);border-radius:6px"><b>[${b.id}]</b> ${b.choice} <span style="color:var(--muted)">→ ${b.consequence||''}</span> <span class="tag tag-${b.risk==='high'?'red':b.risk==='medium'?'blue':'green'}">${b.risk||''}</span></div>`; }); }
+    html += '</div>';
+    document.getElementById('scnResult').innerHTML = html;
+  } catch(e) { document.getElementById('scnResult').innerHTML = '<div style="color:var(--danger)">오류: ' + e.message + '</div>'; }
+}
+
+// === Illustrate ===
+async function loadIllustNPCs() {
+  if (!_currentKey) return;
+  const sel = document.getElementById('illNPC');
+  sel.innerHTML = '<option value="">NPC 선택</option>';
+  const r = await fetch(api('/api/game/npc/templates'), {headers:{'X-Game-Key':_currentKey}});
+  const d = await r.json();
+  (d.templates||[]).forEach(t => { sel.innerHTML += `<option value="${t.id}">${t.name} (${t.class||''})</option>`; });
+}
+
+function toggleIllFields() {
+  const type = document.getElementById('illType').value;
+  document.getElementById('illCharFields').style.display = type === 'character' ? 'block' : 'none';
+  document.getElementById('illSceneFields').style.display = type === 'scene' ? 'block' : 'none';
+}
+
+async function generateIllust() {
+  const type = document.getElementById('illType').value;
+  const style = document.getElementById('illStyle').value;
+  document.getElementById('illResult').innerHTML = '<div class="loading">🎨 일러스트 생성 중...</div>';
+  let body;
+  if (type === 'character') {
+    body = {npc_id: document.getElementById('illNPC').value, pose: document.getElementById('illPose').value, style};
+    if (!body.npc_id) return;
+    var r = await fetch(api('/api/game/illustrate/character'), {method:'POST', headers:{'Content-Type':'application/json','X-Game-Key':_currentKey}, body:JSON.stringify(body)});
+  } else {
+    body = {description: document.getElementById('illDesc').value, mood: document.getElementById('illMood').value, style};
+    if (!body.description) return;
+    var r = await fetch(api('/api/game/illustrate/scene'), {method:'POST', headers:{'Content-Type':'application/json','X-Game-Key':_currentKey}, body:JSON.stringify(body)});
+  }
+  const d = await r.json();
+  if (d.job_id) {
+    document.getElementById('illResult').innerHTML = `<div class="card">생성 요청 완료!<br>Job: ${d.job_id}<br>프롬프트: ${d.prompt_used||''}<br><br><a href="${api('/api/image/status/'+d.job_id)}" target="_blank">상태 확인</a></div>`;
+  } else {
+    document.getElementById('illResult').innerHTML = `<div style="color:var(--danger)">${d.error||JSON.stringify(d)}</div>`;
+  }
+}
+
+// === Logs ===
+async function loadLogs() {
+  const pid = document.getElementById('logPlayer').value.trim();
+  if (!pid || !_currentKey) return;
+  const r = await fetch(api('/api/game/dialogue/history?player_id='+pid+'&limit=15'), {headers:{'X-Game-Key':_currentKey}});
+  const d = await r.json();
+  let html = '';
+  (d.dialogues||[]).forEach(dlg => {
+    html += `<div class="card"><div style="font-size:11px;color:var(--muted)">${dlg.created_at||''}</div>`;
+    (dlg.turns||[]).forEach(t => { html += `<div style="margin:4px 0"><b>${t.speaker||t.name||'?'}:</b> ${(t.text||'').substring(0,120)}</div>`; });
+    html += '</div>';
+  });
+  document.getElementById('logList').innerHTML = html || '<div style="color:var(--muted)">로그 없음</div>';
+}
+
+// === World ===
+async function addWorld() {
+  const title = document.getElementById('worldTitle').value.trim();
+  const content = document.getElementById('worldContent').value.trim();
+  const cat = document.getElementById('worldCat').value;
+  if (!title || !content || !_currentKey) return alert('제목과 내용을 입력하세요');
+  const r = await fetch(api('/api/game/world/setting'), {method:'POST', headers:{'Content-Type':'application/json','X-Game-Key':_currentKey}, body:JSON.stringify({title, content, category:cat})});
+  const d = await r.json();
+  if (d.world_id) { alert('등록 + RAG 색인 완료!'); document.getElementById('worldTitle').value=''; document.getElementById('worldContent').value=''; }
+}
+
+// Init
+loadDashboard();
+</script>
+</body>
+</html>

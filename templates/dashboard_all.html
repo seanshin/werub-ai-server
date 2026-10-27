@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WeRU.B All Servers</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0a0b0f; --surface: #12141c; --card: #161822; --border: #1e2130;
+  --text: #e4e4e7; --muted: #71717a; --accent: #6366f1;
+  --green: #22c55e; --red: #ef4444; --yellow: #eab308; --blue: #3b82f6; --cyan: #06b6d4;
+}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+.header { padding: 12px 20px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.header h1 { font-size: 16px; font-weight: 700; }
+.header .meta { font-size: 11px; color: var(--muted); }
+.content { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 16px 20px; max-width: 1800px; margin: 0 auto; }
+@media (max-width: 900px) { .content { grid-template-columns: 1fr; } }
+.server-panel { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+.server-title { font-size: 14px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.server-title .dot { width: 8px; height: 8px; border-radius: 50%; }
+.server-title .dot.ok { background: var(--green); }
+.server-title .dot.err { background: var(--red); }
+.chart-wrap { position: relative; height: 120px; background: var(--surface); border-radius: 8px; overflow: hidden; margin-bottom: 8px; }
+.chart-wrap canvas { width: 100%; height: 120px; }
+.chart-pct { position: absolute; top: 6px; right: 10px; font-size: 22px; font-weight: 800; }
+.chart-label { position: absolute; top: 6px; left: 10px; font-size: 10px; color: var(--muted); }
+.chart-peak { position: absolute; top: 30px; right: 10px; font-size: 10px; color: var(--muted); }
+.detail { font-size: 10px; color: var(--muted); text-align: right; margin-bottom: 10px; }
+.metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
+.metric { text-align: center; padding: 8px 4px; background: var(--surface); border-radius: 6px; }
+.metric .val { font-size: 14px; font-weight: 700; }
+.metric .val.on { color: var(--green); }
+.metric .val.off { color: var(--red); }
+.metric .val.info { color: var(--cyan); }
+.metric .lbl { font-size: 9px; color: var(--muted); margin-top: 2px; }
+.proc-table { width: 100%; border-collapse: collapse; font-size: 10px; font-family: 'JetBrains Mono', monospace; }
+.proc-table th { text-align: left; padding: 4px 6px; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); font-size: 9px; text-transform: uppercase; }
+.proc-table td { padding: 3px 6px; border-bottom: 1px solid rgba(30,33,48,0.2); }
+.proc-cpu { color: var(--cyan); font-weight: 600; }
+.proc-mem { color: var(--accent); font-weight: 600; }
+.proc-cmd { color: var(--muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.meter-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 11px; }
+.meter-label { color: var(--muted); min-width: 40px; }
+.meter-bar { flex: 1; height: 6px; background: var(--surface); border-radius: 3px; overflow: hidden; }
+.meter-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
+.meter-val { min-width: 90px; text-align: right; font-weight: 600; font-size: 10px; }
+.links { display: flex; gap: 8px; justify-content: center; padding: 8px 0; }
+.links a { padding: 4px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--accent); font-size: 10px; text-decoration: none; }
+.links a:hover { border-color: var(--accent); }
+.spike-entry { font-size: 10px; padding: 2px 0; border-bottom: 1px solid rgba(30,33,48,0.2); display: flex; gap: 6px; }
+.spike-entry .ts { color: var(--muted); min-width: 55px; }
+.spike-entry .badge { padding: 0 4px; border-radius: 3px; font-size: 9px; font-weight: 700; }
+.badge.crit { background: rgba(239,68,68,0.15); color: var(--red); }
+.badge.warn { background: rgba(234,179,8,0.15); color: var(--yellow); }
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <h1>WeRU.B All Servers</h1>
+    <div class="meta" id="updateTime">Loading...</div>
+  </div>
+  <div style="text-align:right;">
+    <div class="meta">Auto-refresh: 5s</div>
+  </div>
+</div>
+
+<div class="content">
+  <!-- GPU Server -->
+  <div class="server-panel" id="panelGpu">
+    <div class="server-title"><span class="dot" id="gpuDot"></span>GPU Server <span style="font-size:11px;color:var(--muted);font-weight:400;" id="gpuInfo"></span></div>
+    <div class="chart-wrap">
+      <span class="chart-label">CPU</span>
+      <span class="chart-pct" id="gpuCpuPct" style="color:var(--green);">--%</span>
+      <span class="chart-peak" id="gpuCpuPeak"></span>
+      <canvas id="gpuCpuCanvas"></canvas>
+    </div>
+    <div class="detail" id="gpuCpuDetail">--</div>
+    <div class="chart-wrap">
+      <span class="chart-label">RAM</span>
+      <span class="chart-pct" id="gpuRamPct" style="color:var(--green);">--%</span>
+      <span class="chart-peak" id="gpuRamPeak"></span>
+      <canvas id="gpuRamCanvas"></canvas>
+    </div>
+    <div class="detail" id="gpuRamDetail">--</div>
+    <div id="gpuMeters"></div>
+    <div class="metrics" id="gpuSvc"></div>
+    <div style="margin-top:8px;">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">Top Processes</div>
+      <table class="proc-table"><tbody id="gpuProcs"><tr><td colspan="5" style="color:var(--muted);">Loading...</td></tr></tbody></table>
+    </div>
+    <div id="gpuSpikes" style="margin-top:8px;max-height:80px;overflow-y:auto;"></div>
+  </div>
+
+  <!-- iMac Server -->
+  <div class="server-panel" id="panelMac">
+    <div class="server-title"><span class="dot" id="macDot"></span>iMac M1 <span style="font-size:11px;color:var(--muted);font-weight:400;" id="macInfo"></span></div>
+    <div class="chart-wrap">
+      <span class="chart-label">CPU</span>
+      <span class="chart-pct" id="macCpuPct" style="color:var(--green);">--%</span>
+      <span class="chart-peak" id="macCpuPeak"></span>
+      <canvas id="macCpuCanvas"></canvas>
+    </div>
+    <div class="detail" id="macCpuDetail">--</div>
+    <div class="chart-wrap">
+      <span class="chart-label">RAM</span>
+      <span class="chart-pct" id="macRamPct" style="color:var(--green);">--%</span>
+      <span class="chart-peak" id="macRamPeak"></span>
+      <canvas id="macRamCanvas"></canvas>
+    </div>
+    <div class="detail" id="macRamDetail">--</div>
+    <div id="macMeters"></div>
+    <div class="metrics" id="macSvc"></div>
+    <div style="margin-top:8px;">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">Top Processes</div>
+      <table class="proc-table"><tbody id="macProcs"><tr><td colspan="5" style="color:var(--muted);">Loading...</td></tr></tbody></table>
+    </div>
+    <div id="macSpikes" style="margin-top:8px;max-height:80px;overflow-y:auto;"></div>
+  </div>
+
+  <!-- Production Server -->
+  <div class="server-panel" id="panelProd">
+    <div class="server-title"><span class="dot" id="prodDot"></span>Production <span style="font-size:11px;color:var(--muted);font-weight:400;" id="prodInfo"></span></div>
+    <div class="chart-wrap">
+      <span class="chart-label">CPU</span>
+      <span class="chart-pct" id="prodCpuPct" style="color:var(--green);">--%</span>
+      <span class="chart-peak" id="prodCpuPeak"></span>
+      <canvas id="prodCpuCanvas"></canvas>
+    </div>
+    <div class="detail" id="prodCpuDetail">--</div>
+    <div class="chart-wrap">
+      <span class="chart-label">RAM</span>
+      <span class="chart-pct" id="prodRamPct" style="color:var(--green);">--%</span>
+      <span class="chart-peak" id="prodRamPeak"></span>
+      <canvas id="prodRamCanvas"></canvas>
+    </div>
+    <div class="detail" id="prodRamDetail">--</div>
+    <div id="prodMeters"></div>
+    <div class="metrics" id="prodSvc"></div>
+    <div style="margin-top:8px;">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">Top Processes</div>
+      <table class="proc-table"><tbody id="prodProcs"><tr><td colspan="5" style="color:var(--muted);">Loading...</td></tr></tbody></table>
+    </div>
+    <div id="prodSpikes" style="margin-top:8px;max-height:80px;overflow-y:auto;"></div>
+  </div>
+
+  <!-- HIS/PACS Server -->
+  <div class="server-panel" id="panelHis">
+    <div class="server-title"><span class="dot" id="hisDot"></span>HIS/PACS <span style="font-size:11px;color:var(--muted);font-weight:400;" id="hisInfo"></span></div>
+    <div class="chart-wrap">
+      <span class="chart-label">CPU</span>
+      <span class="chart-pct" id="hisCpuPct" style="color:var(--green);">--%</span>
+      <span class="chart-peak" id="hisCpuPeak"></span>
+      <canvas id="hisCpuCanvas"></canvas>
+    </div>
+    <div class="detail" id="hisCpuDetail">--</div>
+    <div class="chart-wrap">
+      <span class="chart-label">RAM</span>
+      <span class="chart-pct" id="hisRamPct" style="color:var(--green);">--%</span>
+      <span class="chart-peak" id="hisRamPeak"></span>
+      <canvas id="hisRamCanvas"></canvas>
+    </div>
+    <div class="detail" id="hisRamDetail">--</div>
+    <div id="hisMeters"></div>
+    <div class="metrics" id="hisSvc"></div>
+    <div style="margin-top:8px;">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">Top Processes</div>
+      <table class="proc-table"><tbody id="hisProcs"><tr><td colspan="5" style="color:var(--muted);">Loading...</td></tr></tbody></table>
+    </div>
+    <div id="hisSpikes" style="margin-top:8px;max-height:80px;overflow-y:auto;"></div>
+  </div>
+</div>
+
+<div class="links">
+  <a href="dashboard">Single View</a>
+  <a href="monitor">Live Monitor</a>
+  <a href="./">Admin UI</a>
+</div>
+
+<script>
+const BASE = (() => { const p = window.location.pathname.replace(/\/dashboard\/all\/?$/, ''); return p || ''; })();
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function round1(v) { return Math.round(v * 10) / 10; }
+function pctColor(p) { return p > 80 ? '#ef4444' : p > 50 ? '#eab308' : '#22c55e'; }
+function timeStr(d) { return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0')+':'+d.getSeconds().toString().padStart(2,'0'); }
+
+const MAX_PTS = 300;
+const servers = {
+  gpu:  { cpuHist:[], ramHist:[], cpuProcHist:[], ramProcHist:[], times:[], cpuPeak:0, ramPeak:0, spikes:[], url: BASE+'/api/server/stats', healthUrl: BASE+'/api/health' },
+  mac:  { cpuHist:[], ramHist:[], cpuProcHist:[], ramProcHist:[], times:[], cpuPeak:0, ramPeak:0, spikes:[], url: BASE+'/api/mac/stats', healthUrl: BASE+'/api/mac/health' },
+  prod: { cpuHist:[], ramHist:[], cpuProcHist:[], ramProcHist:[], times:[], cpuPeak:0, ramPeak:0, spikes:[], url: BASE+'/api/prod/stats', healthUrl: BASE+'/api/prod/health' },
+  his:  { cpuHist:[], ramHist:[], cpuProcHist:[], ramProcHist:[], times:[], cpuPeak:0, ramPeak:0, spikes:[], url: BASE+'/api/his/stats', healthUrl: BASE+'/api/his/health' },
+};
+
+function drawMiniChart(id, data, color, overlay) {
+  const c = document.getElementById(id);
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = c.getBoundingClientRect();
+  c.width = rect.width * dpr; c.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  const padL = 28, padR = 6, padT = 6, padB = 4;
+  const w = rect.width - padL - padR, h = rect.height - padT - padB;
+  ctx.clearRect(0, 0, rect.width, rect.height);
+
+  // Y grid
+  ctx.font = '9px -apple-system, sans-serif';
+  ctx.textAlign = 'right';
+  for (let p of [0, 50, 100]) {
+    const y = padT + h - (p/100)*h;
+    ctx.strokeStyle = 'rgba(113,113,122,0.08)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL+w, y); ctx.stroke();
+    ctx.fillStyle = 'rgba(113,113,122,0.4)';
+    ctx.fillText(p+'%', padL-3, y+3);
+  }
+
+  if (data.length < 2) return;
+  const step = w / (MAX_PTS - 1);
+
+  // Main fill + line
+  const grad = ctx.createLinearGradient(0, padT, 0, padT+h);
+  grad.addColorStop(0, color+'30'); grad.addColorStop(1, color+'03');
+  ctx.beginPath(); ctx.moveTo(padL, padT+h);
+  for (let i=0; i<data.length; i++) ctx.lineTo(padL+i*step, padT+h-(data[i]/100)*h);
+  ctx.lineTo(padL+(data.length-1)*step, padT+h);
+  ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
+
+  ctx.beginPath();
+  for (let i=0; i<data.length; i++) { const x=padL+i*step, y=padT+h-(data[i]/100)*h; i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); }
+  ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.stroke();
+
+  // Overlay (proc)
+  if (overlay && overlay.length >= 2) {
+    ctx.beginPath();
+    for (let i=0; i<overlay.length; i++) { const x=padL+i*step, y=padT+h-(Math.min(overlay[i],100)/100)*h; i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); }
+    ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1; ctx.setLineDash([3,2]); ctx.stroke(); ctx.setLineDash([]);
+  }
+
+  // Current dot
+  const lx = padL+(data.length-1)*step, ly = padT+h-(data[data.length-1]/100)*h;
+  ctx.beginPath(); ctx.arc(lx, ly, 3, 0, Math.PI*2); ctx.fillStyle = color; ctx.fill();
+}
+
+function meterHtml(label, pct, detail) {
+  const c = pctColor(pct);
+  return `<div class="meter-row"><span class="meter-label">${label}</span><div class="meter-bar"><div class="meter-fill" style="width:${Math.min(pct,100)}%;background:${c};"></div></div><span class="meter-val">${detail}</span></div>`;
+}
+
+function svcHtml(name, ok, val, sub) {
+  return `<div class="metric"><div class="val ${ok?'on':'off'}">${val||'OFF'}</div><div class="lbl">${name}${sub?' · '+sub:''}</div></div>`;
+}
+
+// 401 폴링 폭주 가드(v2.125.39) — dashboard.html과 같은 클래스: 세션 만료 탭이
+// 4서버×2엔드포인트를 5초마다 영원히 두드린다. 연속 401이면 5분 간격으로 전환.
+let _auth401 = 0, _authSlow = false;
+function _authSlowMode(on) {
+  _authSlow = on;
+  clearInterval(timer);
+  timer = setInterval(() => { if (!document.hidden) refresh(); }, on ? 300000 : 5000);
+  if (on) {
+    const el = document.getElementById('gpuInfo');
+    if (el) el.innerHTML = '세션 만료 — <a href="/login" style="color:#3b82f6">다시 로그인</a>';
+  }
+}
+function _authCheck(r) {
+  if (r.status === 401) {
+    if (++_auth401 >= 8 && !_authSlow) _authSlowMode(true);
+    throw new Error('unauthorized');
+  }
+  _auth401 = 0;
+  if (_authSlow) _authSlowMode(false);
+  return r;
+}
+
+async function refreshServer(key, prefix) {
+  const s = servers[key];
+  try {
+    const [stats, health] = await Promise.all([
+      fetch(s.url).then(r=>_authCheck(r).json()),
+      fetch(s.healthUrl).then(r=>_authCheck(r).json()),
+    ]);
+    const cpu = stats.cpu||{}, ram = stats.ram||{}, gpu = stats.gpu, disk = stats.disk||{}, up = stats.uptime||{};
+    const c = health.checks||{};
+
+    // Status dot
+    document.getElementById(prefix+'Dot').className = 'dot ' + (health.healthy !== false ? 'ok' : 'err');
+    document.getElementById(prefix+'Info').textContent = (gpu ? gpu.name+' · ' : '') + (cpu.cores||0) + ' cores · ' + Math.round((ram.total_mb||0)/1024) + 'GB';
+
+    // CPU
+    const cpuP = cpu.usage_pct||0;
+    const cpuProc = cpu.proc_sum_pct ? round1(cpu.proc_sum_pct / (cpu.cores||1)) : cpuP;
+    s.cpuHist.push(cpuP); if (s.cpuHist.length > MAX_PTS) s.cpuHist.shift();
+    s.cpuProcHist.push(cpuProc); if (s.cpuProcHist.length > MAX_PTS) s.cpuProcHist.shift();
+    const cpuMax = Math.max(cpuP, cpuProc);
+    if (cpuMax > s.cpuPeak) s.cpuPeak = round1(cpuMax);
+    document.getElementById(prefix+'CpuPct').textContent = cpuProc.toFixed(1)+'%';
+    document.getElementById(prefix+'CpuPct').style.color = pctColor(cpuProc);
+    document.getElementById(prefix+'CpuPeak').textContent = 'peak '+s.cpuPeak+'%'+(cpu.peak_proc_pct?' · top '+cpu.peak_proc_pct+'%':'');
+    document.getElementById(prefix+'CpuDetail').textContent = 'idle '+round1(100-cpuMax)+'% · load: '+cpu.load_1m+' / '+cpu.load_5m+' / '+cpu.load_15m+' · '+cpu.cores+' cores';
+    drawMiniChart(prefix+'CpuCanvas', s.cpuHist, pctColor(cpuP), s.cpuProcHist);
+
+    // RAM
+    const ramP = ram.usage_pct||0;
+    s.ramHist.push(ramP); if (s.ramHist.length > MAX_PTS) s.ramHist.shift();
+    if (ramP > s.ramPeak) s.ramPeak = round1(ramP);
+    document.getElementById(prefix+'RamPct').textContent = ramP+'%';
+    document.getElementById(prefix+'RamPct').style.color = pctColor(ramP);
+    document.getElementById(prefix+'RamPeak').textContent = 'peak '+s.ramPeak+'%'+(ram.peak_proc_pct?' · top '+ram.peak_proc_pct+'%':'');
+    document.getElementById(prefix+'RamDetail').textContent = 'idle '+round1(100-ramP)+'% · '+Math.round((ram.used_mb||0)/1024)+'G / '+Math.round((ram.total_mb||0)/1024)+'G';
+    drawMiniChart(prefix+'RamCanvas', s.ramHist, pctColor(ramP));
+
+    // GPU / Disk meters
+    let meters = '';
+    if (gpu) {
+      meters += meterHtml('GPU', gpu.utilization_pct||0, gpu.utilization_pct+'% · '+gpu.temperature_c+'°C');
+      meters += meterHtml('VRAM', gpu.memory_usage_pct||0, Math.round(gpu.memory_used_mb/1024*10)/10+'G / '+Math.round(gpu.memory_total_mb/1024)+'G');
+    }
+    meters += meterHtml('Disk', disk.usage_pct||0, Math.round(disk.free_gb||0)+'G free / '+Math.round(disk.total_gb||0)+'G');
+    document.getElementById(prefix+'Meters').innerHTML = meters;
+
+    // Services
+    let svc = '';
+    if (c.ollama) svc += svcHtml('Ollama', c.ollama.ok, c.ollama.ok?'ON':'OFF');
+    if (c.nextjs) svc += svcHtml('Next.js', c.nextjs.ok, c.nextjs.ok?'ON':'OFF');
+    if (c.nginx) svc += svcHtml('Nginx', c.nginx.ok, c.nginx.ok?'ON':'OFF');
+    if (c.redis) svc += svcHtml('Redis', c.redis.ok, c.redis.ok?'ON':'OFF');
+    if (c.worker) svc += svcHtml('Worker', c.worker.ok, c.worker.ok?'ON':'OFF');
+    if (c.tunnel) svc += svcHtml('Tunnel', c.tunnel.ok, c.tunnel.ok?'UP':'DOWN');
+    if (c.database) svc += svcHtml('DB', c.database.ok, (c.database.size_mb||'?')+'MB');
+    svc += svcHtml('Uptime', true, up.display||'--');
+    document.getElementById(prefix+'Svc').innerHTML = svc;
+
+    // Processes (top 8)
+    const procs = (stats.processes||[]).slice(0, 8);
+    const tbody = document.getElementById(prefix+'Procs');
+    if (procs.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted);">No processes</td></tr>';
+    } else {
+      tbody.innerHTML = procs.map(p => `<tr><td>${esc(p.user)}</td><td class="proc-cpu">${p.cpu.toFixed(1)}</td><td class="proc-mem">${p.mem.toFixed(1)}</td><td>${p.rss_mb}M</td><td class="proc-cmd" title="${esc(p.command)}">${esc(p.command)}</td></tr>`).join('');
+    }
+
+    // Spikes
+    for (const p of procs) {
+      if (p.cpu >= 50) s.spikes.unshift({ ts: timeStr(new Date()), txt: 'CPU '+p.cpu.toFixed(1)+'% · '+p.user+' · '+p.command, level: p.cpu>=80?'crit':'warn' });
+      if (p.mem >= 30) s.spikes.unshift({ ts: timeStr(new Date()), txt: 'MEM '+p.mem.toFixed(1)+'% · '+p.user+' · '+p.command, level: p.mem>=50?'crit':'warn' });
+    }
+    if (s.spikes.length > 20) s.spikes.length = 20;
+    document.getElementById(prefix+'Spikes').innerHTML = s.spikes.map(sp => '<div class="spike-entry"><span class="ts">'+sp.ts+'</span><span class="badge '+sp.level+'">'+esc(sp.txt)+'</span></div>').join('');
+
+  } catch(e) {
+    document.getElementById(prefix+'Dot').className = 'dot err';
+    document.getElementById(prefix+'Info').textContent = 'Connection error';
+  }
+}
+
+async function refresh() {
+  await Promise.all([refreshServer('gpu','gpu'), refreshServer('mac','mac'), refreshServer('prod','prod'), refreshServer('his','his')]);
+  document.getElementById('updateTime').textContent = 'Updated: ' + new Date().toLocaleTimeString('ko-KR',{hour12:false});
+}
+
+let timer;
+function start() { refresh(); timer = setInterval(() => { if (!document.hidden) refresh(); }, 5000); }
+document.addEventListener('visibilitychange', () => { if (document.hidden) clearInterval(timer); else start(); });
+start();
+
+window.addEventListener('resize', () => {
+  for (const [key, prefix] of [['gpu','gpu'],['mac','mac'],['prod','prod'],['his','his']]) {
+    const s = servers[key];
+    drawMiniChart(prefix+'CpuCanvas', s.cpuHist, pctColor(s.cpuHist[s.cpuHist.length-1]||0), s.cpuProcHist);
+    drawMiniChart(prefix+'RamCanvas', s.ramHist, pctColor(s.ramHist[s.ramHist.length-1]||0));
+  }
+});
+</script>
+</body>
+</html>

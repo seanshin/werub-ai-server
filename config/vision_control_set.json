@@ -1,0 +1,9 @@
+{
+  "_doc": "일반 비전 통제군 — /api/vision/describe (v2.125.11). 이미지는 PIL로 그린 한글 명함(정답 알려짐·저작권 무관·결정적). 게이트 차단 조건은 200·기본 모델·이름/전화 중 1 이상. 한국어 비율·지연은 관측 항목(5회 연속 안정 후 승격). 사유: v2.125.10이 기본 비전을 qwen3-vl:8b로 바꿨는데 스모크는 의료 비전만 봐서 빈 응답·폴백·502 회귀를 못 잡았다.",
+  "_endpoint": "/api/vision/describe",
+  "expected_model": "qwen3-vl:8b",
+  "card": {"name": "이수경", "title": "영업팀장", "company": "위럽 주식회사", "phone": "010-4271-3856", "email": "user@example.org"},
+  "prompt": "이 명함에서 이름, 직함, 회사명, 전화번호, 이메일을 그대로 적어 주세요. 한국어로.",
+  "font_candidates": ["/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc", "/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf", "/System/Library/Fonts/AppleSDGothicNeo.ttc"],
+  "observe": {"min_korean_ratio": 0.5, "max_sec": 60}
+}

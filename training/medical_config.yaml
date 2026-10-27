@@ -1,0 +1,71 @@
+# Medical AI Fine-tuning Configuration
+# Target: Korean SOAP summarization + differential diagnosis accuracy
+# Created: 2026-05-20
+
+# Base model — QLoRA 4bit (VRAM ~6GB for 7B)
+base_model: "unsloth/Qwen2.5-7B-Instruct-bnb-4bit"
+output_dir: "./training/outputs/medical"
+model_name_prefix: "medical-qwen"
+
+# QLoRA
+lora_r: 32
+lora_alpha: 32
+lora_dropout: 0.05
+
+# Training (RTX 5080 16GB 최적화)
+num_epochs: 3
+batch_size: 1
+gradient_accumulation_steps: 16
+learning_rate: 1.0e-4
+warmup_ratio: 0.1
+max_seq_length: 1024  # 16GB VRAM 제한
+
+# Data
+data_dir: "./training/data/medical"
+train_split: 0.85
+min_samples: 100
+max_samples: 50000
+
+# Data sources
+sources:
+  # 1. 서버 축적 데이터 (medical_consultations DB)
+  - type: "db"
+    path: "medical.db"
+    table: "medical_consultations"
+    min_quality: 0.7  # quality score 기준
+  # 2. 수동 작성 골드 데이터
+  - type: "jsonl"
+    path: "medical_gold.jsonl"
+  # 3. 공개 한국어 의료 데이터
+  - type: "huggingface"
+    dataset: "beomi/KoAlpaca-v1.1a"
+    filter: "medical"
+
+# Task-specific prompts
+tasks:
+  summarize:
+    system: "당신은 {specialty} 전문의를 보조하는 한국어 의료 AI입니다. 진료 기록을 SOAP 형식으로 요약하세요."
+    weight: 0.4
+  analyze:
+    system: "당신은 {specialty} 전문의를 보조하는 한국어 의료 AI입니다. 증상/검사 결과를 분석하여 감별진단을 제시하세요."
+    weight: 0.3
+  explain:
+    system: "당신은 환자에게 의학 정보를 쉽게 설명하는 한국어 의료 AI입니다."
+    weight: 0.2
+  reference:
+    system: "당신은 의학 참고 문헌을 검색하고 답변하는 한국어 의료 AI입니다."
+    weight: 0.1
+
+# Evaluation
+eval_metrics:
+  - "soap_field_accuracy"  # S/O/A/P 각 필드 존재 + 정확도
+  - "icd_code_match"       # ICD-10 코드 정확도
+  - "korean_ratio"         # 한국어 비율 >= 95%
+eval_threshold: 0.85
+
+# GGUF export
+quantization: "Q4_K_M"
+
+# GPU Safety
+max_vram_pct: 80
+preempt_check_interval: 30

@@ -1,0 +1,129 @@
+# Database — **default-deny**
+# ⚠️ 보안: PHI/자격증명/운영 런타임 DB는 절대 추적 금지 (2026-06-23 보안검토 C1/C2)
+#
+# 2026-08-04 전환: 종전에는 **무시할 DB를 하나씩 열거**했는데, 새 DB가 생길 때마다
+# 수동 추가가 필요해 **6개가 누락**돼 있었다(counseling·medical_cli·medical_law·
+# meeting·orchestrator·rag_fts). 유출은 없었으나(커밋 이력 0·원격 없음) 로컬에서
+# `git add -A` 한 번이면 올라갈 상태였다. → **전부 무시하고 시드 DB만 예외**로 뒤집는다.
+# 이러면 새 DB는 자동으로 보호된다.
+#
+# 민감도 예: medical(환자 PHI) · counseling(상담·위기감지) · meeting(회의 STT) ·
+#           medical_law(질의 이력) · users(비번 해시) · stt_vocab(처방 기반 어휘)
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+# 시드/참조 DB만 의도적 추적 유지 (갱신 시 `git add -f`)
+!clinic_codes.db
+!game.db
+!hr_law.db
+
+# Eval/benchmark 결과물 (실행마다 갱신)
+docs/eval_model.json
+docs/eval_*.json
+
+# Config (contains API keys and admin credentials)
+config.json
+init_config.json
+.secret_key
+
+# Logs
+logs/
+
+# Backups
+backups/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# OS
+.DS_Store
+vector_db/
+chromadb_data/          # 런타임 ChromaDB 벡터스토어(chroma.sqlite3+*.bin) — 트래킹 금지(런타임 수정이 git pull 차단)
+
+# Admin DB
+ollama_admin.db
+
+# Virtual env
+venv/
+
+# Backups (소스/DB 백업 클러터 — 추적 금지)
+*.bak
+*.bak.*
+*.bak[0-9]
+*.backup
+*.backup.*
+*.db.bak
+app_backup_*.py
+app_new.py
+app_flask.py
+app_old.py
+
+# Training outputs (large files)
+training/outputs/checkpoints/
+training/outputs/lora_adapter/*.safetensors
+*.pt
+*.pth
+*.bin
+
+# bkit plugin metadata
+.bkit/
+docs/.bkit-memory.json
+docs/.pdca-snapshots/
+docs/.pdca-status.json
+
+# bkit/Claude 로컬 설정
+.claude/
+
+# C2PA 서명 비밀키/인증서 (gen_c2pa_cert.sh 생성물)
+secrets/
+*.pem
+sign.key
+ca.key
+venv-mac/
+notice.db*
+
+# medical-law-rag P1 (KHIDI 수집 상태/다운로드)
+khidi_state.json
+khidi_notices/
+.chroma_rescue/
+
+# 런타임 의료/약물 DB (정본은 ingest 스크립트로 재적재)
+dur.db
+dur.db-shm
+dur.db-wal
+drug_info.db
+drug_info.db-shm
+drug_info.db-wal
+avatar.db
+avatar.db-shm
+avatar.db-wal
+eval.db
+
+# SANA runtime
+sana_out/
+sana_models/
+eval_spool/
+
+# 런타임 상태 파일 (앱이 쓰고 지운다 — GPU `git status`에 4개월째 떠 있던 것들, 2026-08-19 정리)
+custom_pipelines.json          # routes/ollama.py 사용자 정의 파이프라인
+medical_model_active.json      # routes/medical_training.py 활성 모델 표식
+characters/*_thumb.png         # routes/image.py 캐릭터 썸네일(런타임 생성)
+docs/benchmark_medical_models.json   # scripts/benchmark_medical_models.py 실행 결과
+tmp/
+
+# 인바운드 회신서 — 보낸 쪽이 "커밋하지 않고 둔다"고 명시한 파일(2026-09-14).
+# 미처치 보안 후보를 포함하므로 저장소 이력에 남기지 않는다. 판정·처치는 CLAUDE.md 백로그에 요약돼 있다.
+docs/local-notes-*.md
+
+# DB 파일 백업(격리·정리 스크립트 산출물 — 임상 데이터 포함, 커밋 금지)
+*.db.bak_*
+# 설정·런타임 백업/상태(2026-09-28 정리 — config 백업은 시크릿 포함, 커밋 금지)
+*.bak_*
+custom_pipelines.json
+medical_model_active.json
+training/outputs/
+unsloth_compiled_cache/

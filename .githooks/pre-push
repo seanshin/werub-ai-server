@@ -1,0 +1,11 @@
+#!/bin/sh
+# pre-push 훅 — push 직전 전체 .py 문법 검사 (로컬, 비용 $0)
+# 활성화(머신별 1회): git config core.hooksPath .githooks
+# 우회(긴급): git push --no-verify
+
+repo_root=$(git rev-parse --show-toplevel)
+python3 "$repo_root/scripts/check_syntax.py" || {
+    echo ""
+    echo "❌ 문법 오류로 push 중단. 수정 후 다시 push 하세요. (긴급 우회: git push --no-verify)"
+    exit 1
+}

@@ -1,0 +1,54 @@
+{
+  "version": "v1.6-2026-05-06",
+  "source": "KatFish (Park et al., 인간 470 vs LLM 1,624편 / 에세이 771·시 945·초록 378) + LREAD 인간 판독 실험",
+  "notes": "z-score 계산용 baseline. 미공개 셀은 null.",
+  "genres": {
+    "essay": {
+      "comma_inclusion_rate": {"human": 26.31, "ai": 61.03, "ratio": 2.32, "unit": "percent"},
+      "comma_usage_rate": {"human": 1.13, "ai": 2.56, "ratio": 2.27, "unit": "per_sentence"},
+      "comma_relative_position": {"human": 0.10, "ai": 0.20, "ratio": 2.00, "unit": "normalized_0to1"},
+      "comma_segment_length": {"human": 4.35, "ai": 8.56, "ratio": 1.97, "unit": "eojeol_per_segment"},
+      "comma_pos_diversity": {"human": 24.38, "ai": 59.39, "ratio": 2.44, "unit": "pos_count"},
+      "ending_comma_rate": {"human": 4.10, "ai": 19.83, "ratio": 4.84, "unit": "percent"}
+    },
+    "poetry": {
+      "comma_inclusion_rate": {"human": 27.01, "ai": 42.90, "ratio": 1.59, "unit": "percent"},
+      "comma_usage_rate": {"human": 2.61, "ai": 4.84, "ratio": 1.85, "unit": "per_sentence"},
+      "comma_relative_position": {"human": 0.18, "ai": 0.27, "ratio": 1.50, "unit": "normalized_0to1"},
+      "comma_segment_length": null,
+      "comma_pos_diversity": {"human": 23.13, "ai": 23.86, "ratio": 1.03, "unit": "pos_count", "note": "시 장르는 분리도 약함"},
+      "ending_comma_rate": {"human": 4.68, "ai": 15.57, "ratio": 3.33, "unit": "percent"}
+    },
+    "abstract": {
+      "comma_inclusion_rate": {"human": 47.48, "ai": 65.21, "ratio": 1.37, "unit": "percent"},
+      "comma_usage_rate": {"human": 1.73, "ai": 2.40, "ratio": 1.39, "unit": "per_sentence"},
+      "comma_relative_position": {"human": 0.15, "ai": 0.24, "ratio": 1.60, "unit": "normalized_0to1"},
+      "comma_segment_length": null,
+      "comma_pos_diversity": null,
+      "ending_comma_rate": {"human": 13.27, "ai": 28.01, "ratio": 2.11, "unit": "percent"}
+    },
+    "news": null,
+    "qa": null,
+    "blog": null
+  },
+  "global_average": {
+    "comma_inclusion_rate": {"human": 33.60, "ai": 56.38, "ratio": 1.68, "unit": "percent"},
+    "comma_usage_rate": {"human": 1.82, "ai": 3.27, "ratio": 1.79, "unit": "per_sentence"},
+    "comma_relative_position": {"human": 0.14, "ai": 0.24, "ratio": 1.65, "unit": "normalized_0to1"},
+    "comma_segment_length": {"human": 5.13, "ai": 7.41, "ratio": 1.45, "unit": "eojeol_per_segment"},
+    "comma_pos_diversity": {"human": 30.12, "ai": 48.40, "ratio": 1.61, "unit": "pos_count"}
+  },
+  "z_score_thresholds": {
+    "high_risk": 1.0
+  },
+  "lexicons": {
+    "conclusion_pivot": ["결론적으로", "따라서", "이를 통해", "그러므로"],
+    "safe_balance": ["양쪽 모두", "두 가지 모두", "장점도 있지만", "신중하게", "균형"],
+    "hanja_nominalizers": ["성", "적", "화"],
+    "lexicon_thresholds": {
+      "conclusion_pivot": {"per_doc_count": 3, "severity": "S1"},
+      "safe_balance": {"per_doc_count": 4, "severity": "S2"},
+      "hanja_nominalizers": {"per_doc_density": 12, "severity": "S2", "unit": "occurrences_per_doc"}
+    }
+  }
+}

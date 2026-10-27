@@ -1,0 +1,16 @@
+# iMac M1 (Apple Silicon) 워커 전용 의존성 — apple-silicon-worker Phase 0-8
+# GPU 서버 requirements.txt와 버전 핀 동일 유지 (드리프트 방지, v2.74 이슈 재발 금지)
+# 설치: python3 -m venv venv-mac && venv-mac/bin/pip install -r requirements-mac.txt
+#
+# 주의: torch는 macOS arm64 휠이 MPS(Metal) 지원 기본 포함 — CUDA 옵션 불필요
+
+Flask==3.1.3
+gunicorn==25.3.0
+pillow==12.1.1
+
+# AI 판별 ML (Phase 1: /worker/detect/image — MPS 추론)
+torch==2.10.0
+transformers==5.5.0
+
+# C2PA 서명 (Phase 1: /worker/mark/image — 선택, 인증서 있을 때만 동작)
+c2pa-python==0.32.12

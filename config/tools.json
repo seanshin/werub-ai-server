@@ -1,0 +1,444 @@
+{
+  "version": 1,
+  "defaults": {
+    "model": "qwen3:8b",
+    "max_tool_calls": 5,
+    "tool_timeout": 30,
+    "total_timeout": 120,
+    "temperature": 0.3
+  },
+  "workflow_default_model": "qwen2.5:14b",
+  "general_chat": {
+    "_note": "오케스트레이터 일반챗 폴백(intent 미매칭+도구 미사용) 모델. 변경 후 POST /api/orchestrator/tools/reload. qwen3:14b=품질↑ 단 thinking 5배 느림(eval 참조). workflow_default_model=워크플로 ai:/llm: 스텝 기본 모델.",
+    "model": "qwen2.5:14b",
+    "temperature": 0.5,
+    "num_predict": 500,
+    "timeout": 60,
+    "system": "당신은 병원 AI 어시스턴트입니다. 한국어로 친절하게 답변하세요."
+  },
+  "tools": [
+    {
+      "name": "medical_triage",
+      "description": "환자 증상을 분석하여 적합한 진료과를 추천하고 응급도를 판별합니다",
+      "action": "ai:/api/medical/triage",
+      "parameters": {
+        "type": "object",
+        "required": ["symptom"],
+        "properties": {
+          "symptom": {"type": "string", "description": "환자 증상 설명"},
+          "age": {"type": "integer", "description": "환자 나이"},
+          "sex": {"type": "string", "enum": ["M", "F"], "description": "환자 성별"}
+        }
+      },
+      "enabled": true
+    },
+    {
+      "name": "medical_reasoning",
+      "description": "환자 증상에 대해 5단계 감별진단 추론 체인을 실행합니다 (증상 정규화 -> 감별진단 -> 순위화 -> 검사 제안 -> 최종 평가)",
+      "action": "ai:/api/medical/reasoning/chain",
+      "parameters": {
+        "type": "object",
+        "required": ["patient_text"],
+        "properties": {
+          "patient_text": {"type": "string", "description": "환자 호소 및 증상 텍스트"},
+          "specialty": {"type": "string", "description": "전문과 (내과/외과/소아과 등)"}
+        }
+      },
+      "enabled": true
+    },
+    {
+      "name": "medical_auto_record",
+      "description": "진료 대화 텍스트를 분석하여 자동으로 SOAP 의무기록을 생성합니다",
+      "action": "ai:/api/medical/auto-record",
+      "parameters": {
+        "type": "object",
+        "required": ["conversation"],
+        "properties": {
+          "conversation": {"type": "string", "description": "의사-환자 진료 대화 텍스트"},
+          "specialty": {"type": "string", "description": "전문과"}
+        }
+      },
+      "enabled": true
+    },
+    {
+      "name": "medical_drug_analysis",
+      "description": "복수 약물의 상호작용, 금기사항, 용량 적절성을 분석합니다",
+      "action": "ai:/api/medical/drug-analysis",
+      "parameters": {
+        "type": "object",
+        "required": ["medications"],
+        "properties": {
+          "medications": {"type": "array", "items": {"type": "string"}, "description": "약물 이름 목록"},
+          "patient": {
+            "type": "object",
+            "properties": {
+              "age": {"type": "integer", "description": "나이"},
+              "sex": {"type": "string", "description": "성별"},
+              "conditions": {"type": "array", "items": {"type": "string"}, "description": "기저질환"}
+            }
+          },
+          "depth": {"type": "string", "enum": ["quick", "standard", "comprehensive"], "description": "분석 깊이"}
+        }
+      },
+      "enabled": true
+    },
+    {
+      "name": "medical_predict_readmission",
+      "description": "환자 데이터를 기반으로 30일 내 재입원 위험도를 예측합니다 (HOSPITAL Score)",
+      "action": "ai:/api/medical/predict/readmission",
+      "parameters": {
+        "type": "object",
+        "required": ["patient_data"],
+        "properties": {
+          "patient_data": {
+            "type": "object",
+            "properties": {
+              "diagnosis": {"type": "string", "description": "진단명"},
+              "lab_results": {"type": "string", "description": "검사 결과"},
+              "past_admissions": {"type": "integer", "description": "과거 1년간 입원 횟수"},
+              "length_of_stay": {"type": "integer", "description": "재원일수"}
+            }
+          }
+        }
+      },
+      "enabled": true
+    },
+    {
+      "name": "medical_cross_validate",
+      "description": "2~3개 의료 AI 모델로 독립 감별진단 후 일치도를 평가합니다",
+      "action": "ai:/api/medical/cross-validate",
+      "parameters": {
+        "type": "object",
+        "required": ["patient_text"],
+        "properties": {
+          "patient_text": {"type": "string", "description": "환자 증상/진료 기록"}
+        }
+      },
+      "enabled": true
+    },
+    {
+      "name": "medical_research",
+      "description": "의학 문헌/가이드라인 기반으로 임상 질문에 근거 중심 답변을 제공합니다",
+      "action": "ai:/api/medical/research",
+      "parameters": {
+        "type": "object",
+        "required": ["query"],
+        "properties": {
+          "query": {"type": "string", "description": "연구 질의 (한국어/영어)"},
+          "detail_level": {"type": "string", "enum": ["brief", "standard", "comprehensive"], "description": "응답 상세도"}
+        }
+      },
+      "enabled": true
+    },
+    {
+      "name": "medical_patient_education",
+      "description": "환자가 이해하기 쉬운 언어로 의학 주제/진단/약물을 설명합니다",
+      "action": "ai:/api/medical/patient-education",
+      "parameters": {
+        "type": "object",
+        "required": ["topic"],
+        "properties": {
+          "topic": {"type": "string", "description": "설명할 의학 주제/진단/약물"},
+          "patient_age": {"type": "integer", "description": "환자 나이 (설명 수준 조절)"}
+        }
+      },
+      "enabled": true
+    },
+    {
+      "name": "korean_spellcheck",
+      "description": "한국어 텍스트의 맞춤법을 검사하고 교정합니다",
+      "action": "ai:/api/korean/spellcheck",
+      "parameters": {
+        "type": "object",
+        "required": ["text"],
+        "properties": {
+          "text": {"type": "string", "description": "맞춤법 검사할 한국어 텍스트"}
+        }
+      },
+      "enabled": true
+    },
+    {
+      "name": "korean_analyze",
+      "description": "텍스트의 AI 생성 패턴을 22개 메트릭으로 탐지하고 위험도를 평가합니다",
+      "action": "ai:/api/korean/analyze",
+      "parameters": {
+        "type": "object",
+        "required": ["text"],
+        "properties": {
+          "text": {"type": "string", "description": "분석할 텍스트"},
+          "genre": {"type": "string", "enum": ["essay", "novel", "medical", "blog", "news"], "description": "장르"}
+        }
+      },
+      "enabled": true
+    },
+    {
+      "name": "korean_readability",
+      "description": "한국어 텍스트의 가독성을 5등급(초등~학술)으로 분석합니다",
+      "action": "ai:/api/korean/readability",
+      "parameters": {
+        "type": "object",
+        "required": ["text"],
+        "properties": {
+          "text": {"type": "string", "description": "분석할 텍스트"}
+        }
+      },
+      "enabled": true
+    },
+    {
+      "name": "korean_style_transfer",
+      "description": "한국어 텍스트의 문체를 변환합니다 (존댓말/반말/문어/구어/나레이션/대화)",
+      "action": "ai:/api/korean/style-transfer",
+      "parameters": {
+        "type": "object",
+        "required": ["text", "target_style"],
+        "properties": {
+          "text": {"type": "string", "description": "변환할 텍스트"},
+          "target_style": {"type": "string", "enum": ["formal", "informal", "literary", "colloquial", "narration", "dialogue"], "description": "목표 문체"}
+        }
+      },
+      "enabled": true
+    },
+    {
+      "name": "korean_pipeline",
+      "description": "한국어 텍스트에 필터/분석/맞춤법/가독성/응집성 등 전체 파이프라인을 실행합니다",
+      "action": "ai:/api/korean/pipeline",
+      "parameters": {
+        "type": "object",
+        "required": ["text"],
+        "properties": {
+          "text": {"type": "string", "description": "분석할 텍스트"},
+          "genre": {"type": "string", "description": "장르"},
+          "steps": {"type": "array", "items": {"type": "string"}, "description": "실행할 단계 (filter/analyze/spellcheck/readability/cohesion)"}
+        }
+      },
+      "enabled": true
+    },
+    {
+      "name": "writing_draft",
+      "description": "주제와 톤에 맞는 글쓰기 초안을 생성합니다",
+      "action": "ai:/api/writing/draft",
+      "parameters": {
+        "type": "object",
+        "required": ["topic"],
+        "properties": {
+          "topic": {"type": "string", "description": "글 주제"},
+          "tone": {"type": "string", "description": "톤 (professional/friendly/formal/casual)"},
+          "length": {"type": "string", "enum": ["short", "medium", "long"], "description": "길이"}
+        }
+      },
+      "enabled": true
+    },
+    {
+      "name": "writing_polish",
+      "description": "기존 텍스트를 다듬고 교정합니다",
+      "action": "ai:/api/writing/polish",
+      "parameters": {
+        "type": "object",
+        "required": ["text"],
+        "properties": {
+          "text": {"type": "string", "description": "교정할 텍스트"},
+          "style": {"type": "string", "description": "목표 스타일"}
+        }
+      },
+      "enabled": true
+    },
+    {
+      "name": "writing_seo",
+      "description": "텍스트의 SEO(검색 최적화) 점수를 분석하고 메타 태그/키워드를 추천합니다",
+      "action": "ai:/api/writing/seo",
+      "parameters": {
+        "type": "object",
+        "required": ["text"],
+        "properties": {
+          "text": {"type": "string", "description": "분석할 텍스트"},
+          "keyword": {"type": "string", "description": "타겟 키워드"}
+        }
+      },
+      "enabled": true
+    },
+    {
+      "name": "writing_translate",
+      "description": "텍스트를 지정 언어로 번역합니다",
+      "action": "ai:/api/writing/translate",
+      "parameters": {
+        "type": "object",
+        "required": ["text", "target_lang"],
+        "properties": {
+          "text": {"type": "string", "description": "번역할 텍스트"},
+          "target_lang": {"type": "string", "description": "목표 언어 (English/Japanese/Chinese 등)"}
+        }
+      },
+      "enabled": true
+    },
+    {
+      "name": "rag_search",
+      "description": "RAG 벡터 데이터베이스에서 관련 문서를 검색합니다",
+      "action": "ai:/api/rag/search",
+      "parameters": {
+        "type": "object",
+        "required": ["query"],
+        "properties": {
+          "query": {"type": "string", "description": "검색 질의"},
+          "top_k": {"type": "integer", "description": "반환할 결과 수 (기본 5)"}
+        }
+      },
+      "enabled": true
+    },
+    {
+      "name": "vision_describe",
+      "description": "이미지를 분석하여 내용을 설명합니다",
+      "action": "ai:/api/vision/describe",
+      "parameters": {
+        "type": "object",
+        "required": ["image_url"],
+        "properties": {
+          "image_url": {"type": "string", "description": "이미지 URL"},
+          "prompt": {"type": "string", "description": "분석 지시 (선택)"}
+        }
+      },
+      "enabled": false
+    },
+    {
+      "name": "web_search",
+      "description": "실시간 웹 검색으로 최신 뉴스, 정보, 사실을 조회합니다. 현재 시사, 날씨, 주가, 최신 기술 등 LLM이 모르는 실시간 정보에 사용하세요.",
+      "action": "search://searxng",
+      "parameters": {
+        "type": "object",
+        "required": ["query"],
+        "properties": {
+          "query": {"type": "string", "description": "검색어 (구체적일수록 좋음)"},
+          "category": {"type": "string", "enum": ["general", "news", "science", "it"], "description": "검색 카테고리"},
+          "max_results": {"type": "integer", "description": "최대 결과 수 (기본 5)"}
+        }
+      },
+      "enabled": true
+    },
+    {
+      "name": "clinical_qa",
+      "description": "임상 전문가 수준으로 의학 질문에 근거 기반 답변을 제공합니다",
+      "action": "ai:/api/medical/clinical-qa",
+      "parameters": {
+        "type": "object",
+        "required": ["question"],
+        "properties": {
+          "question": {"type": "string", "description": "임상 질문"},
+          "context": {
+            "type": "object",
+            "properties": {
+              "specialty": {"type": "string", "description": "전문과"},
+              "patient_age": {"type": "integer", "description": "환자 나이"}
+            }
+          }
+        }
+      },
+      "enabled": true
+    },
+    {
+      "name": "medical_law_ask",
+      "description": "의료법·약사법·건강보험 법령/고시/발간물 RAG로 의료 규제·법률 질문에 근거를 인용하여 답변합니다 (진료기록 보존기간, 대체조제, 급여기준, 신고의무 등)",
+      "action": "ai:/api/medical-law/ask",
+      "parameters": {
+        "type": "object",
+        "required": ["question"],
+        "properties": {
+          "question": {"type": "string", "description": "의료법/건강보험 관련 질문"}
+        }
+      },
+      "enabled": true
+    },
+    {
+      "name": "notice_search",
+      "description": "시행 중인 건강보험 심사기준·요양급여 고시를 검색합니다 (삭감기준, 급여기준, 산정지침 등)",
+      "action": "ai:/api/notice/search",
+      "parameters": {
+        "type": "object",
+        "required": ["query"],
+        "properties": {
+          "query": {"type": "string", "description": "검색 질의"},
+          "notice_type": {"type": "string", "description": "고시 유형 (REVIEW_CRITERIA/TARIFF/DRUG_MATERIAL 등, 선택)"},
+          "max_results": {"type": "integer", "description": "최대 결과 수 (기본 5)"}
+        }
+      },
+      "enabled": true
+    },
+    {
+      "name": "notice_diagnose",
+      "description": "건강보험 청구 라인(비식별)의 삭감 위험을 시행 중 심사기준 근거로 평가합니다 (위험밴드 HIGH/MED/LOW + 근거 인용). 약가코드면 저가약 대체조제 정보 동반",
+      "action": "ai:/api/notice/diagnose",
+      "parameters": {
+        "type": "object",
+        "required": ["claim_line"],
+        "properties": {
+          "claim_line": {
+            "type": "object",
+            "properties": {
+              "code": {"type": "string", "description": "청구/약가 코드"},
+              "description": {"type": "string", "description": "진료/처방 내용"},
+              "context": {"type": "string", "description": "청구 맥락 (동일일 중복 산정 등)"},
+              "service_date": {"type": "string", "description": "진료일 YYYY-MM-DD"}
+            }
+          }
+        }
+      },
+      "enabled": true
+    },
+    {
+      "name": "drug_substitution",
+      "description": "약 제품코드로 저가약 대체조제 장려금 대상 여부와 동일성분 대체 의약품 후보를 조회합니다. 후보별 cheaper 플래그(질의약보다 저렴=장려금 대상)와 cheaper_alternatives_count 제공",
+      "action": "ai:/api/notice/drug-substitution",
+      "parameters": {
+        "type": "object",
+        "required": ["code"],
+        "properties": {
+          "code": {"type": "string", "description": "약 제품코드 (9자리)"}
+        }
+      },
+      "enabled": true
+    },
+    {
+      "name": "drug_resolve",
+      "description": "의약품 코드(표준코드/바코드·보험 제품코드·품목기준코드·대표코드·성분명코드)를 주면 의약품 정체성(상품명·전 코드·성분코드·ATC)을 해석합니다. 코드 종류를 몰라도 됨",
+      "action": "ai:/api/notice/drug-master/resolve",
+      "parameters": {
+        "type": "object",
+        "required": ["code"],
+        "properties": {
+          "code": {"type": "string", "description": "의약품 코드(표준코드/제품코드/품목기준코드/성분명코드 등)"}
+        }
+      },
+      "enabled": true
+    },
+    {
+      "name": "drug_info",
+      "description": "약 이름(또는 품목일련번호)으로 환자용 의약품 정보(효능·사용법·복용법·주의사항·상호작용·부작용·보관법)를 식약처 e약은요 정본으로 조회합니다. '이 약 어떻게 먹어요/부작용은?' 류 질의에 사용",
+      "action": "ai:/api/medical/drug-info",
+      "parameters": {
+        "type": "object",
+        "required": ["query"],
+        "properties": {
+          "query": {"type": "string", "description": "약 제품명 또는 품목일련번호"}
+        }
+      },
+      "enabled": true
+    },
+    {
+      "name": "dur_check",
+      "description": "여러 약물의 DUR(병용금기·임부금기·연령금기·노인주의·용량주의·투여기간주의·효능군중복·서방정분할주의)을 식약처 정본 데이터로 점검합니다. 성분명/제품명 목록+선택적 나이/임부 여부를 주면 금기 조합·사유를 반환(참고용, 최종 판단은 처방의/약사)",
+      "action": "ai:/api/medical/dur/check",
+      "parameters": {
+        "type": "object",
+        "required": ["drugs"],
+        "properties": {
+          "drugs": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "약물 성분명 목록 (예: [\"파록세틴\", \"셀레길린염산염\"])"
+          },
+          "age": {"type": "integer", "description": "환자 나이(세, 선택) — 연령금기·노인주의 점검용"},
+          "pregnant": {"type": "boolean", "description": "임신 여부(선택) — 임부금기 점검용"}
+        }
+      },
+      "enabled": true
+    }
+  ]
+}

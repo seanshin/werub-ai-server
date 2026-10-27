@@ -1,0 +1,89 @@
+{
+  "_comment": [
+    "글쓰기(writing) 통제군 — 변경 시 '깨지면 즉시 되돌린다'의 기준.",
+    "",
+    "🔑 **여기 케이스 대부분은 과거에 실제로 깨졌던 것이다**(v2.105.0 번역 가드 3종).",
+    "   상담 통제군이 설계에서 도출한 것과 달리, 이쪽은 사고 이력이 있어 값이 더 확실하다.",
+    "",
+    "  · 메타코멘트 — 모호한 원문에 '(Note: …)', '(Corrected: …)'를 덧붙였다",
+    "  · 언어 이탈 — ja 요청에 중국어, ko 응답 뒤에 중국어가 붙는 degenerate",
+    "  · 🔴 캐시 충돌 — 공용 캐시 키가 `prompt[:200]`이라 번역 보일러플레이트(~190자)에",
+    "    짧은 입력이 잘려 **다른 발화가 같은 번역을 받았다**. 실시간 진료 자막에서",
+    "    **환자 발화가 뒤바뀌는** 사고였다. 두 요청을 비교해야만 잡힌다(`compare_with`).",
+    "",
+    "⚠️ **생성물의 '좋음'은 재지 않는다.** 초안·다듬기는 정답이 없다 —",
+    "   빈 응답·언어 이탈·내용 소실처럼 **결정적으로 판정되는 것**만 본다.",
+    "",
+    "scripts/smoke_contract.py --only writing 으로 검사한다."
+  ],
+  "_version": "2026-08-12",
+  "_endpoint": "/api/translate",
+  "_text_field": "translation.en",
+  "questions": [
+    {
+      "id": "translate-cache-collision",
+      "input": {"text": "처방전을 받으러 왔습니다.", "targets": ["en"]},
+      "compare_with": {"text": "보호자와 함께 오셨나요?", "targets": ["en"]},
+      "must_differ": true,
+      "signals": [],
+      "signals_any": ["prescription"],
+      "forbidden": [],
+      "provenance": "🔴 v2.105.0 실결함 — 공용 캐시 키 `prompt[:200]`이 짧은 입력을 잘라 다른 발화가 같은 번역을 받았다(실시간 진료 자막에서 환자 발화 혼선). 라이브 확인 2026-08-12",
+      "note": "🔴 **두 요청을 비교해야만 잡히는 결함**이다. 단건 검사로는 각각 그럴듯한 번역이라 통과한다. 캐시 키를 만질 때 가장 먼저 깨질 자리다."
+    },
+    {
+      "id": "translate-no-meta-comment",
+      "input": {"text": "아 그거요", "targets": ["en"]},
+      "signals": [],
+      "signals_any": [],
+      "forbidden": ["(Note:", "(Corrected", "Note:", "Translation:", "번역:"],
+      "provenance": "🔴 v2.105.0 실결함 — 모호한 원문에 번역 대신 설명을 덧붙였다. 라이브 확인 2026-08-12(실제 응답 'Oh, that one')",
+      "note": "자막 파이프라인은 응답을 **그대로 화면에 싣는다**. 메타코멘트가 섞이면 그것이 자막이 된다."
+    },
+    {
+      "id": "translate-language-fidelity-ja",
+      "input": {"text": "환자분 성함이 어떻게 되세요?", "targets": ["ja"]},
+      "text_field": "translation.ja",
+      "signals": [],
+      "signals_any": [],
+      "forbidden": [],
+      "min_script_ratio": {"script": "ja", "min": 0.3},
+      "provenance": "🔴 v2.105.0 실결함 — ja 요청에 중국어가 나왔다(degenerate). 라이브 확인 2026-08-12('患者様のお名前はなんですか？')",
+      "note": "일본어 판정은 **가나(히라가나·가타카나) 비율**로 본다. 한자만으로는 중국어와 구분되지 않는다 — 그 구분 실패가 정확히 이 결함이었다."
+    },
+    {
+      "id": "translate-medical-domain",
+      "input": {"text": "고혈압 약을 매일 복용하고 있습니다.", "targets": ["en"], "domain": "medical"},
+      "signals": [],
+      "signals_any": ["hypertension", "blood pressure"],
+      "forbidden": ["(Note:", "번역:"],
+      "provenance": "의료 도메인 계약(HIS 실시간 자막 연동). 라이브 확인 2026-08-12('I take hypertension medication every day.')",
+      "note": "domain=medical이 용어를 살리는지 본다. 일반 번역으로 떨어지면 '고혈압'이 'high blood pressure' 서술로 흩어질 수 있어 택일로 둔다."
+    },
+    {
+      "id": "draft-not-empty-korean",
+      "endpoint": "/api/writing/draft",
+      "text_field": "draft",
+      "input": {"prompt": "사내 건강검진 안내문을 작성해줘", "tone": "formal", "length": "short"},
+      "signals": [],
+      "signals_any": ["건강", "검진"],
+      "forbidden": [],
+      "min_len": 120,
+      "min_korean_ratio": 0.5,
+      "provenance": "빈 응답·영어 누출 방지. 라이브 확인 2026-08-12(486자·한글비율 0.72)",
+      "note": "⚠️ **초안의 '좋음'은 재지 않는다**(정답이 없다). 빈 응답과 언어 이탈만 본다 — 둘 다 결정적으로 판정된다. 한글비율 하한 0.5는 실측 0.72 대비 여유를 둔 값이다(개조식·영문 용어 혼입 정상 범위 허용)."
+    },
+    {
+      "id": "polish-preserves-content",
+      "endpoint": "/api/writing/polish",
+      "text_field": "polished",
+      "input": {"text": "우리 회사는 다음주에 건강검진을 실시할 예정 입니다. 많은 참여 바람니다.", "tone": "formal"},
+      "signals": ["참여"],
+      "signals_any": ["건강검진", "건강 검진"],
+      "forbidden": [],
+      "min_len": 20,
+      "provenance": "내용 소실 방지. 라이브 확인 2026-08-12 — '건강검진'→'건강 검진'으로 **띄어쓰기 정규화**가 일어난다",
+      "note": "🔑 다듬기가 **내용을 지우면** 교정이 아니라 훼손이다(v2.124.50에서 한국어 필터가 영문 OCR을 통째로 삭제한 것과 같은 클래스). ⚠️ '건강검진'을 단정하면 실패한다 — 실제로 띄어쓰기를 정규화하므로 택일로 둔다(같은 날 korean 통제군에서 똑같은 실수를 했다)."
+    }
+  ]
+}

@@ -1,0 +1,93 @@
+# =============================================================================
+# WeRU.B AI Server — requirements.txt
+# GPU Server: Ubuntu RTX 5080 (Python 3.12, venv)
+# Versions pinned from production server 2026-05-26
+# =============================================================================
+
+# --- Web Framework ---
+Flask==3.1.3
+Werkzeug==3.1.8
+Jinja2==3.1.6
+MarkupSafe==3.0.3
+itsdangerous==2.2.0
+blinker==1.9.0
+click==8.3.2
+
+# --- Flask Extensions ---
+flasgger==0.9.7.1
+Flask-Limiter==4.1.1
+limits==5.8.0
+
+# --- WSGI Server ---
+gunicorn==25.3.0
+
+# --- HTTP Client ---
+requests==2.33.1
+urllib3==2.6.3
+certifi==2026.2.25
+charset-normalizer==3.4.7
+idna==3.11
+
+# --- Vector Database (RAG) ---
+chromadb==1.5.8
+
+# --- S3 Object Storage (Wasabi 이미지 스토리지) ---
+boto3==1.43.22
+botocore==1.43.22
+s3transfer==0.18.0
+jmespath==1.1.0
+
+# --- Image Processing ---
+pillow==12.1.1
+
+# --- Document Parsing (법령 3단비교 PDF → medical-law RAG 코퍼스) ---
+pdfplumber==0.11.9
+olefile==0.47          # 구형 바이너리 HWP 5.x(OLE) 텍스트 추출 (rhwp 불요)
+
+# --- Korean NLP (문장 분리) ---
+kss==6.0.6
+
+# --- Meeting Analysis: STT + 화자 분리 (오디오/ML) ---
+faster-whisper==1.2.1
+speechbrain==1.1.0
+soundfile==0.13.1
+resampy==0.4.3
+scipy==1.17.1
+scikit-learn==1.8.0
+
+# --- AI/ML Training (GPU server only) ---
+torch==2.10.0
+transformers==5.5.0
+accelerate==1.13.0
+peft==0.19.1
+trl==0.24.0
+datasets==4.3.0
+unsloth==2026.4.6
+unsloth_zoo==2026.4.8
+bitsandbytes==0.49.2
+safetensors==0.7.0
+sentencepiece==0.2.1
+huggingface_hub==1.11.0
+tokenizers==0.22.2
+
+# --- Numeric / Scientific ---
+numpy==2.3.5
+
+# --- System Monitoring ---
+psutil==7.2.2
+
+# --- Data Serialization ---
+PyYAML==6.0.3
+orjson==3.11.8
+
+# --- Utilities ---
+typing_extensions==4.15.0
+packaging==26.1
+regex==2026.4.4
+tqdm==4.67.3
+filelock==3.29.0
+python-dotenv==1.2.2
+
+# --- Dev / Test (회귀 테스트 — 프로덕션 런타임 불필요) ---
+pytest==9.0.3
+c2pa-python==0.32.12

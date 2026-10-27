@@ -1,0 +1,18 @@
+[package]
+name = "werub-image-gen"
+version = "0.1.0"
+description = "WeRU.B Image Generation Desktop Client"
+authors = ["WeRU.B"]
+edition = "2021"
+
+[lib]
+name = "werub_image_gen_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

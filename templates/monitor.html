@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WeRU.B Ollama Monitor</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0a0b0f; --surface: #12141c; --border: #1e2130;
+  --text: #e4e4e7; --muted: #71717a; --accent: #6366f1;
+  --green: #22c55e; --red: #ef4444; --yellow: #eab308; --blue: #3b82f6;
+}
+body { font-family: 'JetBrains Mono', 'Fira Code', monospace; background: var(--bg); color: var(--text); min-height: 100vh; }
+.header { padding: 12px 20px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.header h1 { font-size: 16px; font-weight: 600; }
+.header .badge { padding: 3px 10px; border-radius: 12px; font-size: 11px; }
+.badge-online { background: rgba(34,197,94,0.15); color: var(--green); }
+.badge-offline { background: rgba(239,68,68,0.15); color: var(--red); }
+.stats { display: flex; gap: 20px; padding: 10px 20px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 12px; color: var(--muted); }
+.stats span { color: var(--text); font-weight: 600; }
+.controls { padding: 8px 20px; display: flex; gap: 8px; align-items: center; background: var(--surface); border-bottom: 1px solid var(--border); }
+.controls button { padding: 4px 12px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px; cursor: pointer; font-size: 11px; font-family: inherit; }
+.controls button:hover { border-color: var(--accent); }
+.controls button.active { background: var(--accent); border-color: var(--accent); }
+.controls input { padding: 4px 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px; font-size: 11px; font-family: inherit; width: 200px; }
+.log-container { padding: 0; overflow-y: auto; height: calc(100vh - 570px); }
+.log-entry { padding: 6px 20px; border-bottom: 1px solid var(--border); font-size: 12px; line-height: 1.6; display: flex; gap: 12px; align-items: flex-start; transition: background 0.3s; }
+.log-entry:hover { background: rgba(99,102,241,0.05); }
+.log-entry.new { animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { background: rgba(99,102,241,0.15); } to { background: transparent; } }
+.log-entry .ts { color: var(--muted); min-width: 85px; flex-shrink: 0; }
+.log-entry .method { min-width: 50px; font-weight: 700; flex-shrink: 0; }
+.log-entry .method.GET { color: var(--green); }
+.log-entry .method.POST { color: var(--blue); }
+.log-entry .method.DELETE { color: var(--red); }
+.log-entry .path { color: var(--text); min-width: 250px; }
+.log-entry .status { min-width: 35px; font-weight: 700; flex-shrink: 0; }
+.log-entry .status.s2 { color: var(--green); }
+.log-entry .status.s3 { color: var(--yellow); }
+.log-entry .status.s4 { color: var(--red); }
+.log-entry .status.s5 { color: var(--red); }
+.log-entry .dur { color: var(--muted); min-width: 60px; text-align: right; flex-shrink: 0; }
+.log-entry .model { color: var(--accent); min-width: 120px; flex-shrink: 0; }
+.log-entry .meta { color: var(--muted); font-size: 11px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.log-entry.job { background: rgba(99,102,241,0.03); }
+.log-entry.job .ts { color: var(--accent); }
+.job-status { padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 700; }
+.job-status.completed { background: rgba(34,197,94,0.15); color: var(--green); }
+.job-status.failed { background: rgba(239,68,68,0.15); color: var(--red); }
+.job-status.started { background: rgba(59,130,246,0.15); color: var(--blue); }
+.job-prompt { color: var(--yellow); opacity: 0.7; }
+.job-response { color: var(--green); opacity: 0.8; }
+.empty { padding: 40px; text-align: center; color: var(--muted); font-size: 14px; }
+.status-bar { display: flex; gap: 0; padding: 0; background: var(--surface); border-bottom: 1px solid var(--border); overflow-x: auto; }
+.status-card { padding: 10px 16px; border-right: 1px solid var(--border); min-width: 120px; }
+.status-card .label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+.status-card .value { font-size: 15px; font-weight: 700; }
+.status-card .value.on { color: var(--green); }
+.status-card .value.off { color: var(--red); }
+.status-card .value.warn { color: var(--yellow); }
+.status-card .sub { font-size: 10px; color: var(--muted); margin-top: 1px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🔴 WeRU.B Ollama Monitor</h1>
+  <div>
+    <span id="connBadge" class="badge badge-offline">Connecting...</span>
+    <span style="font-size:11px;color:var(--muted);margin-left:8px;" id="entryCount">0 entries</span>
+  </div>
+</div>
+<div style="font-size:11px;color:var(--muted);padding:6px 16px 2px;background:var(--surface);border-bottom:1px solid var(--border);font-weight:700;letter-spacing:1px;">
+  🖥 GPU SERVER <span style="font-weight:400;color:var(--accent);">RTX 5080</span>
+</div>
+<div class="status-bar" id="statusBar">
+  <div class="status-card">
+    <div class="label">Ollama</div>
+    <div class="value off" id="sOllama">--</div>
+    <div class="sub" id="sOllamaModels"></div>
+  </div>
+  <div class="status-card">
+    <div class="label">ComfyUI</div>
+    <div class="value off" id="sComfyUI">--</div>
+    <div class="sub" id="sComfyModels"></div>
+  </div>
+  <div class="status-card">
+    <div class="label">Queue</div>
+    <div class="value" id="sQueue">--</div>
+    <div class="sub" id="sQueueDetail"></div>
+  </div>
+  <div class="status-card">
+    <div class="label">GPU</div>
+    <div class="value" id="sGPU">--</div>
+    <div class="sub" id="sGPUDetail"></div>
+  </div>
+  <div class="status-card">
+    <div class="label">Worker</div>
+    <div class="value" id="sWorker">--</div>
+    <div class="sub" id="sWorkerDetail"></div>
+  </div>
+  <div class="status-card">
+    <div class="label">Tunnel</div>
+    <div class="value" id="sTunnel">--</div>
+  </div>
+  <div class="status-card">
+    <div class="label">Disk</div>
+    <div class="value" id="sDisk">--</div>
+    <div class="sub" id="sDiskDetail"></div>
+  </div>
+  <div class="status-card">
+    <div class="label">DB</div>
+    <div class="value" id="sDB">--</div>
+  </div>
+</div>
+<div class="status-bar" id="resourceBar" style="border-bottom:none;">
+  <div class="status-card" style="min-width:200px;">
+    <div class="label">CPU <span id="rCPUPct" style="float:right;color:var(--text);font-weight:700;">--%</span></div>
+    <div style="position:relative;height:24px;background:var(--bg);border-radius:4px;overflow:hidden;margin:4px 0;">
+      <canvas id="cpuChart" style="width:100%;height:24px;"></canvas>
+    </div>
+    <div class="sub" id="rCPUDetail"></div>
+  </div>
+  <div class="status-card" style="min-width:200px;">
+    <div class="label">RAM <span id="rRAMPct" style="float:right;color:var(--text);font-weight:700;">--%</span></div>
+    <div style="position:relative;height:24px;background:var(--bg);border-radius:4px;overflow:hidden;margin:4px 0;">
+      <canvas id="ramChart" style="width:100%;height:24px;"></canvas>
+    </div>
+    <div class="sub" id="rRAMDetail"></div>
+  </div>
+  <div class="status-card">
+    <div class="label">GPU Util</div>
+    <div class="value" id="rGPUUtil">--</div>
+    <div class="sub" id="rGPUTemp"></div>
+  </div>
+  <div class="status-card">
+    <div class="label">VRAM</div>
+    <div class="value" id="rVRAM">--</div>
+    <div class="sub" id="rVRAMDetail"></div>
+  </div>
+  <div class="status-card">
+    <div class="label">Disk</div>
+    <div class="value" id="rDisk">--</div>
+    <div class="sub" id="rDiskDetail"></div>
+  </div>
+  <div class="status-card">
+    <div class="label">Uptime</div>
+    <div class="value" id="rUptime">--</div>
+  </div>
+</div>
+<div style="font-size:11px;color:var(--muted);padding:6px 16px 2px;background:var(--surface);border-bottom:1px solid var(--border);font-weight:700;letter-spacing:1px;">
+  🍎 iMAC SERVER <span style="font-weight:400;color:var(--green);">M1 CPU</span>
+</div>
+<div class="status-bar" id="statusBarMac">
+  <div class="status-card">
+    <div class="label">Ollama</div>
+    <div class="value off" id="mOllama">--</div>
+    <div class="sub" id="mOllamaModels"></div>
+  </div>
+  <div class="status-card">
+    <div class="label">ComfyUI</div>
+    <div class="value off" id="mComfyUI">--</div>
+    <div class="sub" id="mComfyModels"></div>
+  </div>
+  <div class="status-card">
+    <div class="label">Queue</div>
+    <div class="value" id="mQueue">--</div>
+    <div class="sub" id="mQueueDetail"></div>
+  </div>
+  <div class="status-card">
+    <div class="label">Worker</div>
+    <div class="value" id="mWorker">--</div>
+    <div class="sub" id="mWorkerDetail"></div>
+  </div>
+  <div class="status-card">
+    <div class="label">Tunnel</div>
+    <div class="value" id="mTunnel">--</div>
+  </div>
+  <div class="status-card">
+    <div class="label">DB</div>
+    <div class="value" id="mDB">--</div>
+  </div>
+</div>
+<div style="font-size:11px;color:var(--muted);padding:6px 16px 2px;background:var(--surface);border-bottom:1px solid var(--border);font-weight:700;letter-spacing:1px;">
+  🏥 HIS/PACS SERVER <span style="font-weight:400;color:var(--blue);">198.51.100.73</span>
+</div>
+<div class="status-bar" id="statusBarHis">
+  <div class="status-card">
+    <div class="label">Status</div>
+    <div class="value off" id="hStatus">--</div>
+    <div class="sub" id="hStatusDetail"></div>
+  </div>
+  <div class="status-card">
+    <div class="label">CPU</div>
+    <div class="value" id="hCPU">--</div>
+    <div class="sub" id="hCPUDetail"></div>
+  </div>
+  <div class="status-card">
+    <div class="label">RAM</div>
+    <div class="value" id="hRAM">--</div>
+    <div class="sub" id="hRAMDetail"></div>
+  </div>
+  <div class="status-card">
+    <div class="label">GPU</div>
+    <div class="value" id="hGPU">--</div>
+    <div class="sub" id="hGPUDetail"></div>
+  </div>
+  <div class="status-card">
+    <div class="label">Disk</div>
+    <div class="value" id="hDisk">--</div>
+    <div class="sub" id="hDiskDetail"></div>
+  </div>
+  <div class="status-card">
+    <div class="label">Uptime</div>
+    <div class="value" id="hUptime">--</div>
+  </div>
+</div>
+<div style="font-size:11px;color:var(--muted);padding:6px 16px 2px;background:var(--surface);border-bottom:1px solid var(--border);font-weight:700;letter-spacing:1px;">
+  🌐 PRODUCTION SERVER <span style="font-weight:400;color:var(--yellow);">192.0.2.108</span>
+</div>
+<div class="status-bar" id="statusBarProd">
+  <div class="status-card">
+    <div class="label">Status</div>
+    <div class="value off" id="pStatus">--</div>
+    <div class="sub" id="pStatusDetail"></div>
+  </div>
+  <div class="status-card">
+    <div class="label">CPU</div>
+    <div class="value" id="pCPU">--</div>
+    <div class="sub" id="pCPUDetail"></div>
+  </div>
+  <div class="status-card">
+    <div class="label">RAM</div>
+    <div class="value" id="pRAM">--</div>
+    <div class="sub" id="pRAMDetail"></div>
+  </div>
+  <div class="status-card">
+    <div class="label">GPU</div>
+    <div class="value" id="pGPU">--</div>
+    <div class="sub" id="pGPUDetail"></div>
+  </div>
+  <div class="status-card">
+    <div class="label">Disk</div>
+    <div class="value" id="pDisk">--</div>
+    <div class="sub" id="pDiskDetail"></div>
+  </div>
+  <div class="status-card">
+    <div class="label">Uptime</div>
+    <div class="value" id="pUptime">--</div>
+  </div>
+</div>
+<!-- Dashboard Panel (v2.70.0) -->
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--border);">
+  <!-- Queue Detail -->
+  <div style="padding:10px 16px;background:var(--surface);border-right:1px solid var(--border);">
+    <div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:6px;">QUEUE DETAIL</div>
+    <div style="font-size:12px;line-height:1.8;" id="queueDetail">Loading...</div>
+  </div>
+  <!-- Loaded Models -->
+  <div style="padding:10px 16px;background:var(--surface);border-right:1px solid var(--border);">
+    <div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:6px;">LOADED MODELS</div>
+    <div style="font-size:12px;line-height:1.8;" id="loadedModels">Loading...</div>
+  </div>
+  <!-- Pipeline Status -->
+  <div style="padding:10px 16px;background:var(--surface);">
+    <div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:6px;">PIPELINES</div>
+    <div style="font-size:12px;line-height:1.8;" id="pipelineStatus">Loading...</div>
+  </div>
+</div>
+<div class="controls">
+  <button onclick="toggleFilter('all')" class="active" id="fAll">All</button>
+  <button onclick="toggleFilter('chat')" id="fChat">Chat</button>
+  <button onclick="toggleFilter('api')" id="fApi">API</button>
+  <button onclick="toggleFilter('job')" id="fJob">Jobs</button>
+  <button onclick="toggleFilter('error')" id="fError">Errors</button>
+  <input type="text" id="searchInput" placeholder="Filter: path, model, status..." oninput="applyFilter()">
+  <span style="flex:1;"></span>
+  <button onclick="togglePause()" id="pauseBtn">⏸ Pause</button>
+  <button onclick="clearLog()">🗑 Clear</button>
+  <button onclick="toggleAutoScroll()" id="scrollBtn" class="active">↓ Auto-scroll</button>
+</div>
+<div class="log-container" id="logContainer">
+  <div class="empty" id="emptyMsg">Waiting for events...</div>
+</div>
+
+<script>
+const BASE = (() => { const p = window.location.pathname.replace(/\/monitor\/?$/, ''); return p || ''; })();
+let entries = [];
+let paused = false;
+let autoScroll = true;
+let currentFilter = 'all';
+let totalReqs = 0, totalJobs = 0, totalErrors = 0;
+const maxEntries = 1000;
+
+// SSE 연결 — 지수 백오프 재연결 + 탭 비활성 시 연결 해제 (서버 스레드 점유 완화)
+let _es = null;
+let _retryDelay = 3000;            // 3s → 최대 30s 지수 백오프
+let _retryTimer = null;
+let _draining = false;             // 서버 재시작 드레인 중 — onerror 중복 스케줄 방지
+const _RETRY_MAX = 30000;
+
+function connect() {
+  if (document.hidden) return;     // 백그라운드 탭은 연결하지 않음
+  if (_es) { try { _es.close(); } catch(e){} }
+  _draining = false;               // 새 연결 시도 시 드레인 플래그 해제
+  const badge = document.getElementById('connBadge');
+  _es = new EventSource(BASE + '/api/monitor/stream');
+
+  _es.onopen = () => {
+    badge.textContent = 'Live';
+    badge.className = 'badge badge-online';
+    _retryDelay = 3000;            // 성공 시 백오프 리셋
+  };
+
+  _es.onmessage = (e) => {
+    try {
+      const d = JSON.parse(e.data);
+      if (d.type === 'connected') return;
+      if (d.type === 'shutdown') {  // 서버 재시작 — 즉시 재연결 폭주 금지(스레드 고갈 트리거)
+        _draining = true;
+        try { _es.close(); } catch(err){}
+        _es = null;
+        badge.textContent = 'Restarting…';
+        badge.className = 'badge badge-offline';
+        clearTimeout(_retryTimer);
+        // 기동 유예(15s) 통과 + 클라 간 분산: 18~30s 지터 후 재연결
+        const delay = 18000 + Math.floor(Math.random() * 12000);
+        _retryDelay = _RETRY_MAX;  // 이후 실패는 최대 백오프 유지
+        _retryTimer = setTimeout(connect, delay);
+        return;
+      }
+      addEntry(d);
+    } catch(err) {}
+  };
+
+  _es.onerror = () => {
+    badge.textContent = 'Disconnected';
+    badge.className = 'badge badge-offline';
+    try { _es.close(); } catch(e){}
+    _es = null;
+    if (_draining) return;         // 드레인 분산 재연결이 이미 예약됨
+    if (document.hidden) return;   // 숨김 상태면 재연결 보류 (visible 시 재개)
+    clearTimeout(_retryTimer);
+    _retryTimer = setTimeout(connect, _retryDelay);
+    _retryDelay = Math.min(_retryDelay * 2, _RETRY_MAX);   // 지수 증가
+  };
+}
+
+// 탭 가시성 변화: 숨기면 연결 해제(스레드 반납), 다시 보이면 즉시 재연결
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    clearTimeout(_retryTimer);
+    if (_es) { try { _es.close(); } catch(e){} _es = null; }
+  } else if (!_es) {
+    _retryDelay = 3000;
+    connect();
+  }
+});
+
+function addEntry(d) {
+  if (paused) return;
+  entries.push(d);
+  if (entries.length > maxEntries) entries.shift();
+
+  if (d.type === 'job') totalJobs++;
+  else totalReqs++;
+  if ((d.status >= 400) || d.status === 'failed') totalErrors++;
+
+  document.getElementById('entryCount').textContent =
+    `${entries.length} entries · ${totalReqs} reqs · ${totalJobs} jobs · ${totalErrors} errors`;
+
+  const container = document.getElementById('logContainer');
+  const empty = document.getElementById('emptyMsg');
+  if (empty) empty.remove();
+
+  const el = createEntryEl(d);
+  if (!matchFilter(d)) el.style.display = 'none';
+  container.insertBefore(el, container.firstChild);
+
+  // 최대 DOM 노드 제한
+  while (container.children.length > maxEntries) container.removeChild(container.lastChild);
+
+  if (autoScroll) container.scrollTop = 0;
+}
+
+function createEntryEl(d) {
+  const div = document.createElement('div');
+  div.className = 'log-entry new' + (d.type === 'job' ? ' job' : '');
+  div.dataset.raw = JSON.stringify(d);
+
+  if (d.type === 'job') {
+    const statusCls = d.status === 'completed' ? 'completed' : d.status === 'failed' ? 'failed' : 'started';
+    div.innerHTML = `
+      <span class="ts">${formatTime(d.ts)}</span>
+      <span class="job-status ${statusCls}">${d.status}</span>
+      <span class="model">${d.model || ''}</span>
+      <span class="method POST" style="min-width:auto;">${d.job_type || 'llm'}</span>
+      <span class="dur">${d.duration_ms ? d.duration_ms + 'ms' : ''}</span>
+      <span class="meta">
+        ${d.prompt ? '<span class="job-prompt">Q: ' + esc(d.prompt) + '</span>' : ''}
+        ${d.response ? ' <span class="job-response">→ ' + esc(d.response) + '</span>' : ''}
+        ${d.error ? ' <span style="color:var(--red);">ERR: ' + esc(d.error) + '</span>' : ''}
+      </span>`;
+  } else {
+    const sc = String(d.status)[0];
+    div.innerHTML = `
+      <span class="ts">${formatTime(d.ts)}</span>
+      <span class="method ${d.method}">${d.method}</span>
+      <span class="status s${sc}">${d.status}</span>
+      <span class="path">${esc(d.path)}</span>
+      <span class="dur">${d.duration_ms}ms</span>
+      <span class="model">${d.model || ''}</span>
+      <span class="meta">${d.ip || ''} · ${d.key || ''} · ${formatBytes(d.req_size)}→${formatBytes(d.res_size)}</span>`;
+  }
+  return div;
+}
+
+function formatTime(ts) {
+  if (!ts) return '';
+  try {
+    const d = new Date(ts);
+    return d.toLocaleTimeString('ko-KR', {hour12:false}) + '.' + String(d.getMilliseconds()).padStart(3,'0');
+  } catch(e) { return ts.substr(11,12); }
+}
+
+function formatBytes(b) {
+  if (!b || b === 0) return '0';
+  if (b < 1024) return b + 'B';
+  if (b < 1048576) return (b/1024).toFixed(1) + 'K';
+  return (b/1048576).toFixed(1) + 'M';
+}
+
+function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function matchFilter(d) {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  let show = true;
+  if (currentFilter === 'chat') show = (d.path && (d.path.includes('/chat') || d.path.includes('/generate') || d.path.includes('/queue/submit'))) || d.type === 'job';
+  else if (currentFilter === 'api' && d.type === 'job') show = false;
+  else if (currentFilter === 'job' && d.type !== 'job') show = false;
+  else if (currentFilter === 'error' && (d.status < 400 && d.status !== 'failed')) show = false;
+  if (show && search) {
+    const raw = JSON.stringify(d).toLowerCase();
+    show = raw.includes(search);
+  }
+  return show;
+}
+
+function toggleFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll('.controls button').forEach(b => b.classList.remove('active'));
+  document.getElementById('f' + f.charAt(0).toUpperCase() + f.slice(1)).classList.add('active');
+  applyFilter();
+}
+
+function applyFilter() {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  document.querySelectorAll('.log-entry').forEach(el => {
+    const d = JSON.parse(el.dataset.raw || '{}');
+    let show = true;
+    if (currentFilter === 'chat') show = (d.path && (d.path.includes('/chat') || d.path.includes('/generate') || d.path.includes('/queue/submit'))) || d.type === 'job';
+    else if (currentFilter === 'api' && d.type === 'job') show = false;
+    else if (currentFilter === 'job' && d.type !== 'job') show = false;
+    else if (currentFilter === 'error' && (d.status < 400 && d.status !== 'failed')) show = false;
+    if (show && search) {
+      const raw = JSON.stringify(d).toLowerCase();
+      show = raw.includes(search);
+    }
+    el.style.display = show ? '' : 'none';
+  });
+}
+
+function togglePause() {
+  paused = !paused;
+  const btn = document.getElementById('pauseBtn');
+  btn.textContent = paused ? '▶ Resume' : '⏸ Pause';
+  btn.classList.toggle('active', paused);
+}
+
+function toggleAutoScroll() {
+  autoScroll = !autoScroll;
+  const btn = document.getElementById('scrollBtn');
+  btn.classList.toggle('active', autoScroll);
+}
+
+function clearLog() {
+  entries = [];
+  totalReqs = 0; totalJobs = 0; totalErrors = 0;
+  document.getElementById('logContainer').innerHTML = '<div class="empty" id="emptyMsg">Waiting for events...</div>';
+  document.getElementById('entryCount').textContent = '0 entries';
+}
+
+// Server status polling
+async function refreshServerStatus() {
+  try {
+    const r = await fetch(BASE + '/api/health');
+    const d = await r.json();
+    const c = d.checks || {};
+
+    // Ollama
+    const ollama = c.ollama || {};
+    const oEl = document.getElementById('sOllama');
+    oEl.textContent = ollama.ok ? 'Online' : 'Offline';
+    oEl.className = 'value ' + (ollama.ok ? 'on' : 'off');
+
+    // Queue
+    const q = c.queue || {};
+    document.getElementById('sQueue').textContent = (q.pending || 0) + (q.running || 0) > 0
+      ? (q.pending + q.running) : 'Idle';
+    document.getElementById('sQueue').className = 'value ' + ((q.pending || 0) + (q.running || 0) > 0 ? 'warn' : 'on');
+    document.getElementById('sQueueDetail').textContent = `P:${q.pending||0} R:${q.running||0}`;
+
+    // Worker
+    const w = c.worker || {};
+    const wEl = document.getElementById('sWorker');
+    wEl.textContent = w.ok ? (w.paused ? 'Paused' : 'Active') : 'Down';
+    wEl.className = 'value ' + (w.ok && !w.paused ? 'on' : w.paused ? 'warn' : 'off');
+
+    // Tunnel
+    const t = c.tunnel || {};
+    const tEl = document.getElementById('sTunnel');
+    tEl.textContent = t.ok ? 'Up' : 'Down';
+    tEl.className = 'value ' + (t.ok ? 'on' : 'off');
+
+    // Disk
+    const disk = c.disk || {};
+    document.getElementById('sDisk').textContent = disk.ok ? `${Math.round(disk.free_gb)}GB` : 'Low';
+    document.getElementById('sDisk').className = 'value ' + (disk.free_gb > 50 ? 'on' : disk.free_gb > 10 ? 'warn' : 'off');
+    document.getElementById('sDiskDetail').textContent = `${disk.used_pct||0}% used`;
+
+    // DB
+    const db = c.database || {};
+    document.getElementById('sDB').textContent = db.ok ? `${db.size_mb}MB` : 'Error';
+    document.getElementById('sDB').className = 'value ' + (db.ok ? 'on' : 'off');
+
+    // Fail rate
+    const fr = c.fail_rate_1h || {};
+    document.getElementById('sWorkerDetail').textContent = fr.total > 0 ? `${fr.total} jobs/h · ${fr.rate_pct}% fail` : 'No jobs/h';
+
+  } catch(e) {}
+
+  // Ollama models
+  try {
+    const r2 = await fetch(BASE + '/api/status');
+    const d2 = await r2.json();
+    const models = d2.models || [];
+    const running = d2.running_models || [];
+    document.getElementById('sOllamaModels').textContent = `${models.length} models · ${running.length} loaded`;
+  } catch(e) {}
+
+  // ComfyUI
+  try {
+    const r3 = await fetch(BASE + '/api/image/models');
+    const d3 = await r3.json();
+    const cEl = document.getElementById('sComfyUI');
+    if (d3.online) {
+      cEl.textContent = 'Online';
+      cEl.className = 'value on';
+      document.getElementById('sComfyModels').textContent = `${(d3.models||[]).length} models`;
+    } else {
+      cEl.textContent = 'Offline';
+      cEl.className = 'value off';
+    }
+  } catch(e) {
+    document.getElementById('sComfyUI').textContent = 'Offline';
+    document.getElementById('sComfyUI').className = 'value off';
+  }
+
+  // GPU (from status)
+  try {
+    const r4 = await fetch(BASE + '/api/status');
+    const d4 = await r4.json();
+    const rm = d4.running_models || [];
+    const gEl = document.getElementById('sGPU');
+    if (rm.length > 0) {
+      const vram = rm.reduce((s,m) => s + (m.size_vram||0), 0);
+      gEl.textContent = formatBytes(vram);
+      gEl.className = 'value warn';
+      document.getElementById('sGPUDetail').textContent = rm.map(m => m.name).join(', ');
+    } else {
+      gEl.textContent = 'Idle';
+      gEl.className = 'value on';
+      document.getElementById('sGPUDetail').textContent = 'No models loaded';
+    }
+  } catch(e) {}
+}
+
+// iMac server status polling
+
+async function refreshMacStatus() {
+  try {
+    const r = await fetch(BASE + '/api/mac/health');
+    const d = await r.json();
+    const c = d.checks || {};
+
+    const ollama = c.ollama || {};
+    const oEl = document.getElementById('mOllama');
+    oEl.textContent = ollama.ok ? 'Online' : 'Offline';
+    oEl.className = 'value ' + (ollama.ok ? 'on' : 'off');
+
+    const q = c.queue || {};
+    document.getElementById('mQueue').textContent = (q.pending||0) + (q.running||0) > 0
+      ? (q.pending + q.running) : 'Idle';
+    document.getElementById('mQueue').className = 'value ' + ((q.pending||0) + (q.running||0) > 0 ? 'warn' : 'on');
+    document.getElementById('mQueueDetail').textContent = `P:${q.pending||0} R:${q.running||0}`;
+
+    const w = c.worker || {};
+    const wEl = document.getElementById('mWorker');
+    wEl.textContent = w.ok ? (w.paused ? 'Paused' : 'Active') : 'Down';
+    wEl.className = 'value ' + (w.ok && !w.paused ? 'on' : w.paused ? 'warn' : 'off');
+
+    const fr = c.fail_rate_1h || {};
+    document.getElementById('mWorkerDetail').textContent = fr.total > 0 ? `${fr.total} jobs/h` : '';
+
+    const t = c.tunnel || {};
+    const tEl = document.getElementById('mTunnel');
+    tEl.textContent = t.ok ? 'Up' : 'Down';
+    tEl.className = 'value ' + (t.ok ? 'on' : 'off');
+
+    const db = c.database || {};
+    document.getElementById('mDB').textContent = db.ok ? `${db.size_mb}MB` : 'Error';
+    document.getElementById('mDB').className = 'value ' + (db.ok ? 'on' : 'off');
+  } catch(e) {
+    document.getElementById('mOllama').textContent = 'Unreachable';
+    document.getElementById('mOllama').className = 'value off';
+  }
+
+  // iMac models
+  try {
+    const r2 = await fetch(BASE + '/api/mac/status');
+    const d2 = await r2.json();
+    document.getElementById('mOllamaModels').textContent = `${(d2.models||[]).length} models · ${(d2.running_models||[]).length} loaded`;
+  } catch(e) {}
+
+  // iMac ComfyUI
+  try {
+    const r3 = await fetch(BASE + '/api/mac/image/models');
+    const d3 = await r3.json();
+    const cEl = document.getElementById('mComfyUI');
+    if (d3.online) {
+      cEl.textContent = 'Online';
+      cEl.className = 'value on';
+      document.getElementById('mComfyModels').textContent = `${(d3.models||[]).length} models`;
+    } else {
+      cEl.textContent = 'Offline';
+      cEl.className = 'value off';
+    }
+  } catch(e) {
+    document.getElementById('mComfyUI').textContent = 'Offline';
+    document.getElementById('mComfyUI').className = 'value off';
+  }
+}
+
+// Mini sparkline chart
+const cpuHistory = [];
+const ramHistory = [];
+const CHART_MAX_POINTS = 60; // 60 points × 5s = 5분
+
+function drawSparkline(canvasId, data, color) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  const w = rect.width, h = rect.height;
+
+  ctx.clearRect(0, 0, w, h);
+  if (data.length < 2) return;
+
+  const len = data.length;
+  const step = w / (CHART_MAX_POINTS - 1);
+
+  // Fill gradient
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, color + '40');
+  grad.addColorStop(1, color + '05');
+
+  ctx.beginPath();
+  ctx.moveTo((len - 1) * step, h);
+  for (let i = 0; i < len; i++) {
+    const x = i * step;
+    const y = h - (data[i] / 100) * h;
+    if (i === 0) ctx.lineTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.lineTo((len - 1) * step, h);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  for (let i = 0; i < len; i++) {
+    const x = i * step;
+    const y = h - (data[i] / 100) * h;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Current value dot
+  if (len > 0) {
+    const lastX = (len - 1) * step;
+    const lastY = h - (data[len - 1] / 100) * h;
+    ctx.beginPath();
+    ctx.arc(lastX, lastY, 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+}
+
+function pctColor(pct) {
+  if (pct > 80) return '#ef4444';
+  if (pct > 50) return '#eab308';
+  return '#22c55e';
+}
+
+async function refreshResources() {
+  try {
+    const r = await fetch(BASE + '/api/server/stats');
+    const d = await r.json();
+
+    // CPU
+    const cpu = d.cpu || {};
+    const cpuPct = cpu.usage_pct || 0;
+    cpuHistory.push(cpuPct);
+    if (cpuHistory.length > CHART_MAX_POINTS) cpuHistory.shift();
+    document.getElementById('rCPUPct').textContent = cpuPct + '%';
+    document.getElementById('rCPUPct').style.color = pctColor(cpuPct);
+    document.getElementById('rCPUDetail').textContent = `load ${cpu.load_1m || 0} · ${cpu.cores || 0} cores`;
+    drawSparkline('cpuChart', cpuHistory, pctColor(cpuPct));
+
+    // RAM
+    const ram = d.ram || {};
+    const ramPct = ram.usage_pct || 0;
+    ramHistory.push(ramPct);
+    if (ramHistory.length > CHART_MAX_POINTS) ramHistory.shift();
+    document.getElementById('rRAMPct').textContent = ramPct + '%';
+    document.getElementById('rRAMPct').style.color = pctColor(ramPct);
+    document.getElementById('rRAMDetail').textContent = `${Math.round((ram.used_mb||0)/1024)}G / ${Math.round((ram.total_mb||0)/1024)}G`;
+    drawSparkline('ramChart', ramHistory, pctColor(ramPct));
+
+    // GPU
+    if (d.gpu) {
+      const gpuEl = document.getElementById('rGPUUtil');
+      gpuEl.textContent = d.gpu.utilization_pct + '%';
+      gpuEl.className = 'value ' + (d.gpu.utilization_pct > 80 ? 'warn' : 'on');
+      document.getElementById('rGPUTemp').textContent = d.gpu.temperature_c + '°C · ' + d.gpu.name.replace('NVIDIA ','');
+
+      const vramEl = document.getElementById('rVRAM');
+      vramEl.textContent = Math.round(d.gpu.memory_used_mb/1024*10)/10 + 'G';
+      vramEl.className = 'value ' + (d.gpu.memory_usage_pct > 90 ? 'off' : d.gpu.memory_usage_pct > 70 ? 'warn' : 'on');
+      document.getElementById('rVRAMDetail').textContent = `${Math.round(d.gpu.memory_used_mb)}/${d.gpu.memory_total_mb}MB (${d.gpu.memory_usage_pct}%)`;
+    } else {
+      document.getElementById('rGPUUtil').textContent = 'N/A';
+      document.getElementById('rVRAM').textContent = 'N/A';
+    }
+
+    // Disk
+    const disk = d.disk || {};
+    const diskEl = document.getElementById('rDisk');
+    diskEl.textContent = Math.round(disk.free_gb || 0) + 'G free';
+    diskEl.className = 'value ' + (disk.free_gb < 50 ? 'off' : disk.free_gb < 100 ? 'warn' : 'on');
+    document.getElementById('rDiskDetail').textContent = `${disk.usage_pct||0}% · ${Math.round(disk.used_gb||0)}/${Math.round(disk.total_gb||0)}G`;
+
+    // Uptime
+    document.getElementById('rUptime').textContent = (d.uptime || {}).display || '--';
+  } catch(e) {}
+}
+
+// Remote server status polling (shared for HIS/PACS + Production)
+function pctClass(v) { return v > 80 ? 'off' : v > 50 ? 'warn' : 'on'; }
+
+// 401 폴링 폭주 가드(v2.125.39) — 세션 만료 상태의 원격 서버 폴러(mac/his/prod ×10s)를
+// 5분에 1회로 낮춘다(타이머 핸들이 없어 진입 게이트 방식). 재인증 성공 시 자동 복구.
+let _auth401 = 0, _authNext = 0;
+async function refreshRemoteServer(apiPath, prefix) {
+  if (_auth401 >= 6) {
+    if (Date.now() < _authNext) return;
+    _authNext = Date.now() + 300000;
+  }
+  try {
+    const r = await fetch(BASE + apiPath);
+    if (r.status === 401) {
+      if (++_auth401 === 6) _authNext = Date.now() + 300000;
+      throw new Error('unauthorized');
+    }
+    _auth401 = 0;
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+
+    document.getElementById(prefix+'Status').textContent = 'Online';
+    document.getElementById(prefix+'Status').className = 'value on';
+    document.getElementById(prefix+'StatusDetail').textContent = (d.gpu ? d.gpu.name : '') + ' · ' + (d.cpu?.cores||0) + ' cores';
+
+    const cpu = d.cpu || {};
+    document.getElementById(prefix+'CPU').textContent = (cpu.usage_pct||0) + '%';
+    document.getElementById(prefix+'CPU').className = 'value ' + pctClass(cpu.usage_pct||0);
+    document.getElementById(prefix+'CPUDetail').textContent = 'load ' + (cpu.load_1m||0);
+
+    const ram = d.ram || {};
+    document.getElementById(prefix+'RAM').textContent = (ram.usage_pct||0) + '%';
+    document.getElementById(prefix+'RAM').className = 'value ' + pctClass(ram.usage_pct||0);
+    document.getElementById(prefix+'RAMDetail').textContent = Math.round((ram.used_mb||0)/1024) + 'G / ' + Math.round((ram.total_mb||0)/1024) + 'G';
+
+    if (d.gpu) {
+      document.getElementById(prefix+'GPU').textContent = d.gpu.utilization_pct + '%';
+      document.getElementById(prefix+'GPU').className = 'value ' + (d.gpu.utilization_pct > 80 ? 'warn' : 'on');
+      document.getElementById(prefix+'GPUDetail').textContent = d.gpu.temperature_c + '°C · ' + Math.round(d.gpu.memory_used_mb/1024*10)/10 + 'G VRAM';
+    } else {
+      document.getElementById(prefix+'GPU').textContent = 'N/A';
+    }
+
+    const disk = d.disk || {};
+    document.getElementById(prefix+'Disk').textContent = Math.round(disk.free_gb||0) + 'G free';
+    document.getElementById(prefix+'Disk').className = 'value ' + ((disk.free_gb||0) < 50 ? 'off' : (disk.free_gb||0) < 100 ? 'warn' : 'on');
+    document.getElementById(prefix+'DiskDetail').textContent = (disk.usage_pct||0) + '% used';
+
+    document.getElementById(prefix+'Uptime').textContent = (d.uptime||{}).display || '--';
+  } catch(e) {
+    document.getElementById(prefix+'Status').textContent = 'Offline';
+    document.getElementById(prefix+'Status').className = 'value off';
+    document.getElementById(prefix+'StatusDetail').textContent = '';
+  }
+}
+
+function refreshHisStatus() { return refreshRemoteServer('/api/his/stats', 'h'); }
+function refreshProdStatus() { return refreshRemoteServer('/api/prod/stats', 'p'); }
+
+// Dashboard panel refresh (v2.70.0)
+async function refreshDashboard() {
+  try {
+    // Queue detail
+    const qr = await fetch(BASE + '/api/dashboard/queue');
+    const qd = await qr.json();
+    const q = qd.queue || {};
+    const stats = qd.stats || {};
+    document.getElementById('queueDetail').innerHTML =
+      `<span style="color:var(--yellow)">Pending: ${q.pending||0}</span> · Running: ${q.running||0} · Done: ${q.completed||0}<br>` +
+      `Total: ${stats.total||0} jobs · ${Math.round((stats.total_tokens||0)/1000)}K tokens<br>` +
+      `Avg: ${stats.avg_tok_per_sec||0} tok/s · ${Math.round((stats.avg_duration_ms||0)/1000)}s/job` +
+      (q.batch_mode ? '<br><span style="color:var(--accent)">BATCH MODE</span>' : '');
+  } catch(e) { document.getElementById('queueDetail').textContent = 'Error'; }
+
+  try {
+    // Loaded models
+    const mr = await fetch(BASE + '/api/dashboard/models');
+    const md = await mr.json();
+    const loaded = md.loaded_models || [];
+    const total = md.total_models || 0;
+    if (loaded.length === 0) {
+      document.getElementById('loadedModels').innerHTML = `<span style="color:var(--muted)">No models loaded</span><br>Installed: ${total}`;
+    } else {
+      document.getElementById('loadedModels').innerHTML = loaded.map(m =>
+        `<span style="color:var(--green)">${m.name}</span> <span style="color:var(--muted)">${Math.round((m.size||0)/1e9)}GB</span>`
+      ).join('<br>') + `<br><span style="color:var(--muted)">Total: ${total} installed</span>`;
+    }
+  } catch(e) { document.getElementById('loadedModels').textContent = 'Error'; }
+
+  try {
+    // Pipeline status
+    const pr = await fetch(BASE + '/api/queue/batches');
+    const pd = await pr.json();
+    const batches = (pd.batches || []).filter(b => b.batch_id && b.batch_id.startsWith('pipe-'));
+    if (batches.length === 0) {
+      document.getElementById('pipelineStatus').innerHTML = '<span style="color:var(--muted)">No pipelines</span>';
+    } else {
+      document.getElementById('pipelineStatus').innerHTML = batches.slice(0, 5).map(b => {
+        const status = b.failed > 0 ? '<span style="color:var(--red)">FAIL</span>' :
+                       b.pending > 0 || b.running > 0 ? '<span style="color:var(--yellow)">RUNNING</span>' :
+                       '<span style="color:var(--green)">DONE</span>';
+        return `${b.batch_id.substring(0,15)} ${status} ${b.completed}/${b.total}`;
+      }).join('<br>');
+    }
+  } catch(e) { document.getElementById('pipelineStatus').textContent = 'Error'; }
+}
+
+refreshDashboard();
+setInterval(refreshDashboard, 10000);
+
+refreshServerStatus();
+refreshMacStatus();
+refreshHisStatus();
+refreshProdStatus();
+refreshResources();
+setInterval(refreshServerStatus, 10000);
+setInterval(refreshMacStatus, 10000);
+setInterval(refreshHisStatus, 10000);
+setInterval(refreshProdStatus, 10000);
+setInterval(refreshResources, 5000);
+
+connect();
+</script>
+</body>
+</html>

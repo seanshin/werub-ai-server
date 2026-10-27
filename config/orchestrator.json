@@ -1,0 +1,15 @@
+{
+  "capabilities": {
+    "detect": { "resource": "light", "worker_route": "/worker/detect/image", "payload_kind": "image", "policy": "prefer_imac", "timeout_s": 15 },
+    "mark":   { "resource": "light", "worker_route": "/worker/mark/image",   "payload_kind": "image", "policy": "prefer_imac", "timeout_s": 10 },
+    "stt":    { "resource": "heavy", "worker_route": "/worker/stt",          "payload_kind": "audio", "policy": "prefer_imac", "timeout_s": 1800 }
+  },
+  "scheduler": {
+    "w_inflight": 1.0,
+    "w_latency": 0.5,
+    "min_dwell_ms": 2000,
+    "hysteresis_margin": 2.0,
+    "breaker_fails": 3,
+    "breaker_open_ms": 30000
+  }
+}

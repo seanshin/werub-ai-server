@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HR Law Admin — WeRU.B</title>
+<style>
+:root {
+  --bg: #0f1117; --surface: #1a1d27; --card: #1e2130; --border: #2a2d3a;
+  --text: #e4e4e7; --muted: #71717a; --accent: #6366f1; --accent-hover: #818cf8;
+  --success: #22c55e; --warning: #f59e0b; --danger: #ef4444;
+  --sidebar-w: 240px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; }
+.sidebar { width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border); padding: 20px 0; position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; }
+.sidebar-title { padding: 0 20px 20px; font-size: 18px; font-weight: 700; color: var(--accent); border-bottom: 1px solid var(--border); }
+.sidebar-title small { display: block; font-size: 11px; color: var(--muted); font-weight: 400; margin-top: 4px; }
+.nav-group { padding: 16px 0 0; }
+.nav-group-title { padding: 0 20px 8px; font-size: 11px; text-transform: uppercase; color: var(--muted); letter-spacing: 1px; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; cursor: pointer; color: var(--muted); transition: all 0.15s; font-size: 14px; }
+.nav-item:hover { background: rgba(99,102,241,0.1); color: var(--text); }
+.nav-item.active { background: rgba(99,102,241,0.15); color: var(--accent); border-right: 3px solid var(--accent); }
+.nav-back { margin-top: auto; padding: 16px 20px; border-top: 1px solid var(--border); }
+.nav-back a { color: var(--muted); text-decoration: none; font-size: 13px; }
+.nav-back a:hover { color: var(--text); }
+.main { margin-left: var(--sidebar-w); flex: 1; padding: 24px 32px; }
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+.page-header h1 { font-size: 24px; }
+.stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+.stat-card .label { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+.stat-card .value { font-size: 28px; font-weight: 700; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 16px; }
+.card h2 { font-size: 16px; margin-bottom: 16px; }
+.form-row { display: flex; gap: 12px; margin-bottom: 12px; align-items: center; }
+.form-row label { min-width: 100px; font-size: 13px; color: var(--muted); }
+.input { padding: 10px 14px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; font-size: 14px; width: 100%; }
+.input:focus { outline: none; border-color: var(--accent); }
+textarea.input { resize: vertical; min-height: 80px; }
+.btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.15s; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-success { background: var(--success); color: #fff; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+.btn-sm { padding: 6px 14px; font-size: 12px; }
+.tag { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 11px; margin: 2px; }
+.tag-blue { background: rgba(99,102,241,0.2); color: var(--accent); }
+.tag-green { background: rgba(34,197,94,0.2); color: var(--success); }
+.tag-red { background: rgba(239,68,68,0.2); color: var(--danger); }
+.tag-yellow { background: rgba(245,158,11,0.2); color: var(--warning); }
+.chat-box { height: 450px; overflow-y: auto; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+.chat-msg { max-width: 85%; padding: 12px 16px; border-radius: 16px; font-size: 14px; line-height: 1.7; word-break: break-word; white-space: pre-wrap; }
+.chat-user { background: var(--accent); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
+.chat-npc { background: var(--surface); border: 1px solid var(--border); align-self: flex-start; border-bottom-left-radius: 4px; }
+.chat-system { color: var(--muted); font-size: 12px; text-align: center; align-self: center; }
+.chat-meta { font-size: 11px; color: var(--muted); margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
+.page { display: none; }
+.page.active { display: block; }
+.loading { text-align: center; padding: 40px; color: var(--muted); }
+.progress-bar { width: 100%; height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; margin-top: 8px; }
+.progress-fill { height: 100%; background: var(--accent); transition: width 0.3s; }
+@media (max-width: 768px) {
+  .sidebar { width: 60px; } .sidebar-title, .nav-group-title, .nav-item span { display: none; }
+  .nav-item { justify-content: center; padding: 12px; } .main { margin-left: 60px; padding: 16px; }
+}
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-title">⚖️ HR Law<br><small>근태/인사 법률 SaaS</small></div>
+  <div class="nav-group">
+    <div class="nav-group-title">상담</div>
+    <div class="nav-item active" onclick="goPage('chat')"><span class="icon">💬</span><span>법률 상담</span></div>
+    <div class="nav-item" onclick="goPage('search')"><span class="icon">🔍</span><span>법률 검색</span></div>
+  </div>
+  <div class="nav-group">
+    <div class="nav-group-title">계산기</div>
+    <div class="nav-item" onclick="goPage('calc-leave')"><span class="icon">📅</span><span>연차 계산</span></div>
+    <div class="nav-item" onclick="goPage('calc-overtime')"><span class="icon">⏰</span><span>초과근무수당</span></div>
+    <div class="nav-item" onclick="goPage('calc-severance')"><span class="icon">💰</span><span>퇴직금</span></div>
+  </div>
+  <div class="nav-group">
+    <div class="nav-group-title">취업규칙</div>
+    <div class="nav-item" onclick="goPage('rules')"><span class="icon">📋</span><span>규칙 관리</span></div>
+    <div class="nav-item" onclick="goPage('template')"><span class="icon">📄</span><span>표준 양식</span></div>
+    <div class="nav-item" onclick="goPage('review')"><span class="icon">🔎</span><span>법위반 검토</span></div>
+  </div>
+  <div class="nav-group">
+    <div class="nav-group-title">관리</div>
+    <div class="nav-item" onclick="goPage('tenants')"><span class="icon">🏢</span><span>회사 관리</span></div>
+    <div class="nav-item" onclick="goPage('stats')"><span class="icon">📊</span><span>통계</span></div>
+  </div>
+  <div class="nav-back"><a href="/">← Ollama Admin</a></div>
+</aside>
+
+<div class="main">
+
+  <!-- 법률 상담 채팅 -->
+  <div id="page-chat" class="page active">
+    <div class="page-header"><h1>💬 법률 상담</h1></div>
+    <div class="card">
+      <div class="form-row">
+        <label>카테고리</label>
+        <select id="chatCat" class="input" style="width:200px">
+          <option value="">전체</option>
+          <option value="work_hours">근로시간</option><option value="rest">휴게/휴일</option>
+          <option value="annual_leave">연차휴가</option><option value="wage">임금</option>
+          <option value="overtime_pay">초과근무수당</option><option value="severance">퇴직급여</option>
+          <option value="dismissal">해고</option><option value="discipline">징계</option>
+          <option value="maternity">모성보호</option><option value="harassment">직장내괴롭힘</option>
+        </select>
+        <label style="min-width:60px">언어</label>
+        <select id="chatLang" class="input" style="width:120px">
+          <option value="ko">한국어</option><option value="en">English</option>
+          <option value="vi">Tiếng Việt</option><option value="zh">中文</option><option value="ja">日本語</option>
+        </select>
+      </div>
+      <div class="chat-box" id="hrChatBox">
+        <div class="chat-system">근태/인사 관련 법률 질문에 답변해드립니다.</div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <input id="hrChatMsg" class="input" placeholder="법률 질문을 입력하세요..." onkeydown="if(event.key==='Enter')sendHrChat()">
+        <button class="btn btn-primary" onclick="sendHrChat()">전송</button>
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('hrChatBox').innerHTML='<div class=chat-system>대화가 초기화되었습니다.</div>'">초기화</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 법률 검색 -->
+  <div id="page-search" class="page">
+    <div class="page-header"><h1>🔍 법률 조문 검색</h1></div>
+    <div class="card">
+      <div class="form-row">
+        <input id="searchQuery" class="input" placeholder="키워드 (연차, 해고, 휴업수당 등)" style="flex:1">
+        <select id="searchCat" class="input" style="width:150px">
+          <option value="">전체</option><option value="annual_leave">연차</option><option value="wage">임금</option>
+          <option value="dismissal">해고</option><option value="work_hours">근로시간</option>
+        </select>
+        <button class="btn btn-primary" onclick="searchLaw()">검색</button>
+      </div>
+      <div id="searchResults"></div>
+    </div>
+  </div>
+
+  <!-- 연차 계산 -->
+  <div id="page-calc-leave" class="page">
+    <div class="page-header"><h1>📅 연차 유급휴가 계산</h1></div>
+    <div class="card">
+      <div class="form-row"><label>입사일</label><input id="leaveStart" type="date" class="input" style="width:200px"></div>
+      <button class="btn btn-primary" onclick="calcLeave()">계산</button>
+      <div id="leaveResult" style="margin-top:16px"></div>
+    </div>
+  </div>
+
+  <!-- 초과근무수당 -->
+  <div id="page-calc-overtime" class="page">
+    <div class="page-header"><h1>⏰ 초과근무수당 계산</h1></div>
+    <div class="card">
+      <div class="form-row"><label>시급 (원)</label><input id="otWage" type="number" class="input" value="15000" style="width:200px"></div>
+      <div class="form-row"><label>연장근로 (시간)</label><input id="otExt" type="number" class="input" value="0" style="width:150px"></div>
+      <div class="form-row"><label>야간근로 (시간)</label><input id="otNight" type="number" class="input" value="0" style="width:150px"></div>
+      <div class="form-row"><label>휴일근로 (시간)</label><input id="otHoliday" type="number" class="input" value="0" style="width:150px"></div>
+      <div class="form-row"><label>휴일 8h초과</label><input id="otHolidayO8" type="number" class="input" value="0" style="width:150px"></div>
+      <button class="btn btn-primary" onclick="calcOvertime()">계산</button>
+      <div id="otResult" style="margin-top:16px"></div>
+    </div>
+  </div>
+
+  <!-- 퇴직금 -->
+  <div id="page-calc-severance" class="page">
+    <div class="page-header"><h1>💰 퇴직금 계산</h1></div>
+    <div class="card">
+      <div class="form-row"><label>입사일</label><input id="sevStart" type="date" class="input" style="width:200px"></div>
+      <div class="form-row"><label>퇴직일</label><input id="sevEnd" type="date" class="input" style="width:200px"></div>
+      <div class="form-row"><label>평균임금 (일급)</label><input id="sevWage" type="number" class="input" value="150000" style="width:200px"></div>
+      <button class="btn btn-primary" onclick="calcSeverance()">계산</button>
+      <div id="sevResult" style="margin-top:16px"></div>
+    </div>
+  </div>
+
+  <!-- 취업규칙 관리 -->
+  <div id="page-rules" class="page">
+    <div class="page-header"><h1>📋 취업규칙 관리</h1><button class="btn btn-primary" onclick="genRuleDraft()">🤖 초안 자동 생성</button></div>
+    <div class="card"><h2>완성도</h2><div id="rulesCompleteness"></div></div>
+    <div class="card"><h2>등록된 규칙</h2><div id="rulesList"></div></div>
+  </div>
+
+  <!-- 표준 양식 -->
+  <div id="page-template" class="page">
+    <div class="page-header"><h1>📄 표준 취업규칙 양식</h1></div>
+    <div id="templateContent"></div>
+  </div>
+
+  <!-- 법위반 검토 -->
+  <div id="page-review" class="page">
+    <div class="page-header"><h1>🔎 취업규칙 법위반 검토</h1></div>
+    <div class="card">
+      <p style="color:var(--muted);margin-bottom:12px">등록된 취업규칙을 근로기준법 기준으로 검토합니다.</p>
+      <button class="btn btn-danger" onclick="reviewRules()">🔍 법위반 검토 실행</button>
+      <div id="reviewResult" style="margin-top:16px"></div>
+    </div>
+  </div>
+
+  <!-- 회사 관리 -->
+  <div id="page-tenants" class="page">
+    <div class="page-header"><h1>🏢 회사 관리</h1></div>
+    <div class="card">
+      <h2>새 회사 등록</h2>
+      <div class="form-row"><label>회사명</label><input id="tenantName" class="input" placeholder="주식회사 OOO" style="flex:2"></div>
+      <div class="form-row"><label>이메일</label><input id="tenantEmail" class="input" placeholder="hr@company.com" style="flex:2"></div>
+      <div class="form-row">
+        <label>요금제</label>
+        <select id="tenantPlan" class="input" style="width:250px">
+          <option value="basic">Basic (100건/일)</option><option value="standard">Standard (500건/일)</option><option value="premium">Premium (2,000건/일)</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="registerTenant()">+ 등록</button>
+    </div>
+    <div class="card"><h2>등록된 회사</h2><div id="tenantList"></div></div>
+  </div>
+
+  <!-- 통계 -->
+  <div id="page-stats" class="page">
+    <div class="page-header"><h1>📊 통계</h1></div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="label">법률 조문</div><div class="value" id="sDocs">-</div></div>
+      <div class="stat-card"><div class="label">색인 완료</div><div class="value" id="sIndexed">-</div></div>
+      <div class="stat-card"><div class="label">카테고리</div><div class="value" id="sCats">-</div></div>
+      <div class="stat-card"><div class="label">질의 수</div><div class="value" id="sQueries">-</div></div>
+    </div>
+    <div class="card"><h2>법률별</h2><div id="sLawDetail"></div></div>
+  </div>
+
+</div>
+
+<script>
+const BASE = (() => { const p = window.location.pathname.replace(/\/hr-law-admin\/?$/, '').replace(/\/+$/, ''); return p || ''; })();
+function api(path) { return BASE + path; }
+let _tenantKey = '';
+
+function goPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const page = document.getElementById('page-' + name);
+  if (page) page.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => { if (n.getAttribute('onclick') && n.getAttribute('onclick').includes("'" + name + "'")) n.classList.add('active'); });
+  if (name === 'stats') loadStats();
+  if (name === 'template') loadTemplate();
+  if (name === 'rules') loadRules();
+  if (name === 'tenants') loadTenants();
+}
+
+function addMsg(type, html) {
+  const box = document.getElementById('hrChatBox');
+  const div = document.createElement('div');
+  div.className = 'chat-msg chat-' + type;
+  div.innerHTML = html;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+  return div;
+}
+
+async function sendHrChat() {
+  const msg = document.getElementById('hrChatMsg').value.trim();
+  if (!msg) return;
+  const cat = document.getElementById('chatCat').value;
+  const lang = document.getElementById('chatLang').value;
+  addMsg('user', msg);
+  document.getElementById('hrChatMsg').value = '';
+  const loading = addMsg('system', '⏳ 답변 생성 중...');
+  try {
+    const headers = {'Content-Type':'application/json'};
+    if (_tenantKey) headers['X-Tenant-Key'] = _tenantKey;
+    const r = await fetch(api('/api/hr-law/ask'), {method:'POST', headers, body:JSON.stringify({question:msg, category:cat||undefined, language:lang})});
+    const d = await r.json();
+    loading.remove();
+    const sources = (d.sources||[]).map(s => `<span class="tag tag-blue">${s.law} ${s.article}</span>`).join(' ');
+    addMsg('npc', d.answer + (sources ? `<div class="chat-meta">📎 ${sources}</div>` : ''));
+  } catch(e) { loading.remove(); addMsg('npc', '❌ ' + e.message); }
+}
+
+async function searchLaw() {
+  const q = document.getElementById('searchQuery').value.trim();
+  const cat = document.getElementById('searchCat').value;
+  if (!q) return;
+  const r = await fetch(api('/api/hr-law/search'), {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({query:q, category:cat||undefined})});
+  const d = await r.json();
+  let html = '';
+  (d.results||[]).forEach(r => {
+    html += `<div class="card"><h2>${r.law_name} ${r.article} — ${r.title}</h2><div style="white-space:pre-wrap;font-size:13px;max-height:300px;overflow:auto">${r.content}</div><div style="margin-top:8px"><span class="tag tag-blue">${r.category}</span> <span class="tag tag-green">${r.source_type}</span></div></div>`;
+  });
+  document.getElementById('searchResults').innerHTML = html || '<div style="color:var(--muted)">검색 결과 없음</div>';
+}
+
+async function calcLeave() {
+  const start = document.getElementById('leaveStart').value;
+  if (!start) return alert('입사일 선택');
+  const r = await fetch(api('/api/hr-law/calculate/annual-leave'), {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({start_date:start})});
+  const d = await r.json();
+  document.getElementById('leaveResult').innerHTML = `<div class="card"><div style="font-size:36px;font-weight:bold;color:var(--accent)">${d.total_leave}일</div><div style="margin-top:8px">${d.note||''}</div><div style="margin-top:4px;color:var(--muted)">📎 ${d.legal_basis||''}</div></div>`;
+}
+
+async function calcOvertime() {
+  const r = await fetch(api('/api/hr-law/calculate/overtime'), {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({hourly_wage:+document.getElementById('otWage').value, extended_hours:+document.getElementById('otExt').value, night_hours:+document.getElementById('otNight').value, holiday_hours:+document.getElementById('otHoliday').value, holiday_over8:+document.getElementById('otHolidayO8').value})});
+  const d = await r.json();
+  const b = d.breakdown||{};
+  document.getElementById('otResult').innerHTML = `<div class="card"><div style="font-size:36px;font-weight:bold;color:var(--warning)">${(d.total_overtime_pay||0).toLocaleString()}원</div><table style="width:100%;margin-top:12px;font-size:13px"><tr><th>구분</th><th>시간</th><th>배율</th><th>금액</th></tr>${Object.entries(b).map(([k,v])=>`<tr><td>${k}</td><td>${v.hours}h</td><td>${v.rate}</td><td>${(v.amount||0).toLocaleString()}원</td></tr>`).join('')}</table><div style="margin-top:8px;color:var(--muted)">📎 ${d.legal_basis||''}</div></div>`;
+}
+
+async function calcSeverance() {
+  const r = await fetch(api('/api/hr-law/calculate/severance'), {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({start_date:document.getElementById('sevStart').value, end_date:document.getElementById('sevEnd').value, avg_daily_wage:+document.getElementById('sevWage').value})});
+  const d = await r.json();
+  document.getElementById('sevResult').innerHTML = d.error ? `<div style="color:var(--danger)">${d.error}</div>` : `<div class="card"><div style="font-size:36px;font-weight:bold;color:var(--success)">${(d.severance_pay||0).toLocaleString()}원</div><div style="margin-top:8px">근속 ${d.years}년 (${d.working_days}일)</div><div style="color:var(--muted)">📎 ${d.legal_basis} | ${d.formula}</div></div>`;
+}
+
+async function loadStats() {
+  const r = await fetch(api('/api/hr-law/stats'));
+  const d = await r.json();
+  document.getElementById('sDocs').textContent = d.total_documents||0;
+  document.getElementById('sIndexed').textContent = d.indexed||0;
+  document.getElementById('sCats').textContent = Object.keys(d.by_category||{}).length;
+  document.getElementById('sQueries').textContent = d.queries_total||0;
+  let html = '';
+  Object.entries(d.by_law||{}).forEach(([k,v]) => { html += `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span>${k}</span><span class="tag tag-blue">${v}건</span></div>`; });
+  document.getElementById('sLawDetail').innerHTML = html;
+}
+
+async function loadTemplate() {
+  const r = await fetch(api('/api/hr-law/rules/template'));
+  const d = await r.json();
+  let html = '';
+  (d.sections||[]).forEach(s => {
+    html += `<div class="card"><h2>${s.title} ${s.required?'<span class="tag tag-red">필수</span>':''} <span style="font-size:12px;color:var(--muted)">${s.legal_basis||''}</span></h2>`;
+    (s.articles||[]).forEach(a => {
+      html += `<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:13px"><b>${a.title}</b> ${a.required?'<span class="tag tag-red">필수</span>':''} <span style="color:var(--muted)">${a.hint||''}</span>${a.legal?` <span class="tag tag-blue">${a.legal}</span>`:''}</div>`;
+    });
+    html += '</div>';
+  });
+  document.getElementById('templateContent').innerHTML = html;
+}
+
+async function loadRules() {
+  if (!_tenantKey) { document.getElementById('rulesCompleteness').innerHTML = '<div style="color:var(--muted)">회사를 먼저 등록하세요</div>'; return; }
+  try {
+    const r = await fetch(api('/api/hr-law/rules/completeness'), {headers:{'X-Tenant-Key':_tenantKey}});
+    const d = await r.json();
+    let html = `<div style="font-size:24px;font-weight:bold;color:var(--accent);margin-bottom:12px">${d.completeness_pct||0}%</div><div class="progress-bar"><div class="progress-fill" style="width:${d.completeness_pct||0}%"></div></div>`;
+    if (d.missing_required && d.missing_required.length) {
+      html += '<div style="margin-top:12px"><b>미등록 필수항목:</b></div>';
+      d.missing_required.forEach(m => { html += `<div style="margin:4px 0"><span class="tag tag-red">${m.section}</span> ${m.articles.join(', ')}</div>`; });
+    }
+    document.getElementById('rulesCompleteness').innerHTML = html;
+  } catch(e) {}
+}
+
+async function reviewRules() {
+  if (!_tenantKey) return alert('회사 등록 후 이용 가능');
+  document.getElementById('reviewResult').innerHTML = '<div class="loading">🔍 LLM이 법위반 검토 중... (30초~1분)</div>';
+  const r = await fetch(api('/api/hr-law/rules/review'), {method:'POST', headers:{'Content-Type':'application/json','X-Tenant-Key':_tenantKey}, body:JSON.stringify({})});
+  const d = await r.json();
+  if (d.error) { document.getElementById('reviewResult').innerHTML = `<div style="color:var(--danger)">${d.error}</div>`; return; }
+  document.getElementById('reviewResult').innerHTML = `<div class="card"><div style="display:flex;gap:16px;margin-bottom:16px"><span class="tag tag-red" style="font-size:16px;padding:8px 16px">❌ 위반 ${d.violations||0}</span><span class="tag tag-yellow" style="font-size:16px;padding:8px 16px">⚠️ 주의 ${d.warnings||0}</span><span class="tag tag-green" style="font-size:16px;padding:8px 16px">✅ 적합 ${d.compliant||0}</span></div><div style="white-space:pre-wrap;font-size:13px;line-height:1.8">${d.review||''}</div></div>`;
+}
+
+async function genRuleDraft() {
+  if (!_tenantKey) return alert('회사 등록 후 이용 가능');
+  const section = prompt('섹션 ID (work_hours, leave, wage, dismissal, discipline, safety 등):');
+  if (!section) return;
+  document.getElementById('rulesList').innerHTML = '<div class="loading">🤖 초안 생성 중...</div>';
+  const r = await fetch(api('/api/hr-law/rules/generate'), {method:'POST', headers:{'Content-Type':'application/json','X-Tenant-Key':_tenantKey}, body:JSON.stringify({section_id:section})});
+  const d = await r.json();
+  document.getElementById('rulesList').innerHTML = d.error ? `<div style="color:var(--danger)">${d.error}</div>` : `<div class="card"><h2>${d.section_title||section}</h2><div style="white-space:pre-wrap;font-size:13px">${d.draft||''}</div><div style="margin-top:8px;color:var(--warning)">⚠️ ${d.note||''}</div></div>`;
+}
+
+async function loadTenants() {
+  const r = await fetch(api('/api/hr-law/tenants'));
+  const d = await r.json();
+  let html = '';
+  (d.tenants||[]).forEach(t => {
+    html += `<div class="card"><div style="display:flex;justify-content:space-between"><b>${t.name}</b><code style="font-size:11px">${t.api_key}</code></div><div style="font-size:12px;color:var(--muted)">플랜: ${t.plan} | 규칙: ${t.rules_count||0}건 | 질의: ${t.queries_count||0}건 | 오늘: ${t.today_usage||0}건</div></div>`;
+    if (!_tenantKey) _tenantKey = t.api_key;
+  });
+  document.getElementById('tenantList').innerHTML = html || '<div style="color:var(--muted)">등록된 회사 없음</div>';
+}
+
+async function registerTenant() {
+  const name = document.getElementById('tenantName').value.trim();
+  if (!name) return alert('회사명 입력');
+  const r = await fetch(api('/api/hr-law/tenant/register'), {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name, contact_email:document.getElementById('tenantEmail').value, plan:document.getElementById('tenantPlan').value})});
+  const d = await r.json();
+  if (d.api_key) { _tenantKey = d.api_key; alert('등록 완료!\\nAPI Key: ' + d.api_key); document.getElementById('tenantName').value=''; loadTenants(); }
+}
+
+// Init — 테넌트 키 로딩
+(async () => { try { const r = await fetch(api('/api/hr-law/tenants')); const d = await r.json(); if (d.tenants && d.tenants.length) _tenantKey = d.tenants[0].api_key; } catch{} })();
+</script>
+</body>
+</html>

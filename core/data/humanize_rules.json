@@ -1,0 +1,59 @@
+{
+  "version": "v2.0",
+  "source": "epoko77-ai/im-not-ai (MIT)",
+  "s1_patterns": [
+    {"id": "A-1", "category": "번역투", "pattern": "~에 대해(서)", "fix": "목적격 조사로 직결"},
+    {"id": "A-2", "category": "번역투", "pattern": "~를 통해/통하여 남발", "fix": "~로, ~해서, ~함으로써"},
+    {"id": "A-3", "category": "번역투", "pattern": "~에 있어(서)", "fix": "~에서, ~을 볼 때"},
+    {"id": "A-7", "category": "번역투", "pattern": "가지고 있다 (have 직역)", "fix": "형용사·동사 환원"},
+    {"id": "A-8", "category": "번역투", "pattern": "이중 피동 ~되어진다", "fix": "능동 또는 단일 피동"},
+    {"id": "A-16", "category": "번역투", "pattern": "그/그녀/그것/그들 단락 3회+", "fix": "영형(생략) 또는 명사구"},
+    {"id": "C-5", "category": "구조", "pattern": "이모지 남발", "fix": "칼럼·리포트면 전부 삭제"},
+    {"id": "C-10", "category": "구조", "pattern": "콜론 부제 헤딩 X: Y 반복", "fix": "헤딩 짧게 또는 평서 헤딩"},
+    {"id": "C-11", "category": "구조", "pattern": "연결어미 뒤 쉼표 (-고/-며/-지만 직후)", "fix": "쉼표 제거 (KatFish 4.84배)"},
+    {"id": "D-1", "category": "관용구", "pattern": "결산 피벗 (결론적으로/따라서/이를 통해/그러므로) 3회+", "fix": "1~2건만 남기고 삭제"},
+    {"id": "D-2", "category": "관용구", "pattern": "시사하는 바가 크다/주목할 만하다", "fix": "삭제 또는 구체 결론"},
+    {"id": "D-3", "category": "관용구", "pattern": "본질적으로/핵심적으로", "fix": "삭제"},
+    {"id": "D-4", "category": "관용구", "pattern": "hype 어휘 (파격적/압도적/획기적) 3회+", "fix": "구체 수치·사실로 환원"},
+    {"id": "D-5", "category": "관용구", "pattern": "의인화 추상 주어 (기술이 묻는다)", "fix": "사람·기관 주어로"},
+    {"id": "D-6", "category": "관용구", "pattern": "결말 공식 ~할 때다/~해야 한다/지금이야말로", "fix": "평서로 닫거나 삭제"},
+    {"id": "H-1", "category": "접속사", "pattern": "문두 접속사 5회+ (또한/따라서/즉/나아가)", "fix": "대량 제거"},
+    {"id": "H-3", "category": "접속사", "pattern": "메타 진입 3회+ (이는/이 점에서)", "fix": "본문에 녹이거나 삭제"},
+    {"id": "I-1", "category": "형식명사", "pattern": "~인 것이다/~한 것이다 결말", "fix": "평서형으로"},
+    {"id": "J-2", "category": "장식", "pattern": "따옴표 강조 5회+", "fix": "핵심 1~2개만 살리고 평어로"}
+  ],
+  "s2_key_patterns": [
+    {"id": "A-4", "category": "번역투", "pattern": "~라는 점에서 3회+"},
+    {"id": "A-9", "category": "번역투", "pattern": "~에 의해 피동"},
+    {"id": "A-10", "category": "번역투", "pattern": "~할 수 있다 남발"},
+    {"id": "A-18", "category": "번역투", "pattern": "≥3어절 관형구 좌향 수식"},
+    {"id": "A-19", "category": "번역투", "pattern": "이중 조사 결합 (-에서의 등)"},
+    {"id": "C-7", "category": "구조", "pattern": "먼저·반면·결국 3단 공식"},
+    {"id": "D-7", "category": "관용구", "pattern": "변환 공식 X에서 Y로 반복"},
+    {"id": "E-1", "category": "리듬", "pattern": "문장 길이 균일 (stdev <8)"},
+    {"id": "E-2", "category": "리듬", "pattern": "동일 종결어미 4연속 + ~고 있다"},
+    {"id": "F-4", "category": "수식", "pattern": "한자어 명사화 -성/-적/-화 12회+"},
+    {"id": "G-1", "category": "hedging", "pattern": "~것이다/~할 것이다 남발"},
+    {"id": "G-3", "category": "hedging", "pattern": "안전 균형 lexicon 4회+"}
+  ],
+  "do_not_touch": [
+    "고유명사·제품명·모델명·기관명",
+    "수치·날짜·단위",
+    "큰따옴표 안 직접 인용",
+    "법률 조문",
+    "수학·화학·통계 표기",
+    "영어 약어 (LLM·GPU·MCP·API 등)"
+  ],
+  "genre_config": {
+    "essay":   {"allow_emoji": false, "allow_bullet": false, "heading_max": 0},
+    "column":  {"allow_emoji": false, "allow_bullet": false, "heading_max": 0},
+    "report":  {"allow_emoji": false, "allow_bullet": true,  "heading_max": 1},
+    "blog":    {"allow_emoji": true,  "allow_bullet": true,  "heading_max": 2},
+    "medical": {"allow_emoji": false, "allow_bullet": true,  "heading_max": 2},
+    "chat":    {"allow_emoji": true,  "allow_bullet": true,  "heading_max": 0}
+  },
+  "change_rate_guard": {
+    "warning_threshold": 0.30,
+    "halt_threshold": 0.50
+  }
+}

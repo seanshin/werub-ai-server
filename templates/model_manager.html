@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Model Manager</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0b0f;--surface:#12141c;--card:#161822;--border:#1e2130;
+  --text:#e4e4e7;--muted:#71717a;--accent:#6366f1;
+  --green:#22c55e;--red:#ef4444;--yellow:#eab308;--blue:#3b82f6;--cyan:#06b6d4;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.header{padding:12px 20px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.header h1{font-size:16px;font-weight:700}
+.header .meta{font-size:11px;color:var(--muted)}
+.header a{color:var(--accent);font-size:11px;text-decoration:none}
+.status-badge{padding:3px 8px;border-radius:4px;font-size:9px;font-weight:700}
+.status-badge.online{background:rgba(34,197,94,.15);color:var(--green)}
+.status-badge.offline{background:rgba(239,68,68,.15);color:var(--red)}
+.tabs{display:flex;gap:0;background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;overflow-x:auto}
+.tab{padding:10px 16px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;white-space:nowrap}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.panel{display:none;padding:16px 20px;max-width:1400px;margin:0 auto}
+.panel.active{display:block}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+@media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr)}}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px}
+.card .val{font-size:22px;font-weight:800}
+.card .lbl{font-size:10px;color:var(--muted);margin-top:2px}
+.section{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px}
+.section h3{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+table.data{width:100%;border-collapse:collapse;font-size:11px}
+table.data th{text-align:left;padding:6px 8px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase}
+table.data td{padding:5px 8px;border-bottom:1px solid rgba(30,33,48,.3)}
+.badge{padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700}
+.badge-ok{background:rgba(34,197,94,.15);color:var(--green)}
+.badge-idle{background:rgba(113,113,122,.15);color:var(--muted)}
+.badge-run{background:rgba(59,130,246,.15);color:var(--blue)}
+.btn{padding:6px 14px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;transition:border-color .2s}
+.btn:hover{border-color:var(--accent)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-primary:hover{background:#5558e6}
+.btn-danger{border-color:var(--red);color:var(--red)}
+.btn-danger:hover{background:rgba(239,68,68,.1)}
+.btn-sm{padding:3px 8px;font-size:10px}
+.form-row{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.form-row input{padding:6px 12px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:6px;font-size:12px;font-family:inherit;flex:1;min-width:200px}
+.form-row input::placeholder{color:var(--muted)}
+.progress-box{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;margin-top:12px;font-family:'JetBrains Mono',monospace;font-size:10px;line-height:1.8;max-height:200px;overflow-y:auto;display:none}
+.progress-bar{height:6px;background:var(--border);border-radius:3px;margin-top:8px;overflow:hidden;display:none}
+.progress-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--cyan));border-radius:3px;transition:width .3s}
+.popular-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-top:12px}
+.popular-item{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;display:flex;justify-content:space-between;align-items:center}
+.popular-item .name{font-size:11px;font-weight:600}
+.popular-item .size{font-size:9px;color:var(--muted)}
+.gpu-card{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px}
+.gpu-metric{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center}
+.gpu-metric .val{font-size:20px;font-weight:800}
+.gpu-metric .lbl{font-size:10px;color:var(--muted);margin-top:4px}
+.toast{position:fixed;bottom:20px;right:20px;padding:10px 16px;border-radius:8px;font-size:11px;font-weight:600;z-index:9999;opacity:0;transform:translateY(10px);transition:all .3s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.success{background:rgba(34,197,94,.9);color:#fff}
+.toast.error{background:rgba(239,68,68,.9);color:#fff}
+.toast.info{background:rgba(99,102,241,.9);color:#fff}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+@media(max-width:900px){.row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Model Manager</h1>
+    <div class="meta" id="lastUpdate">Loading...</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <span class="status-badge offline" id="connBadge">OFFLINE</span>
+    <a href="/">&#8592; Admin</a>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('overview')">Overview</button>
+  <button class="tab" onclick="switchTab('pull')">Pull Model</button>
+  <button class="tab" onclick="switchTab('gpu')">GPU Status</button>
+  <button class="tab" onclick="switchTab('settings')">Settings</button>
+</div>
+
+<!-- OVERVIEW -->
+<div id="panel-overview" class="panel active">
+  <div class="cards" id="overviewCards">
+    <div class="card"><div class="val" id="totalModels">-</div><div class="lbl">Total Models</div></div>
+    <div class="card"><div class="val" id="runningModels">-</div><div class="lbl">Running Models</div></div>
+    <div class="card"><div class="val" id="totalSize">-</div><div class="lbl">Total Size</div></div>
+    <div class="card"><div class="val" id="gpuVram">-</div><div class="lbl">GPU VRAM</div></div>
+  </div>
+  <div class="section">
+    <h3>설치된 모델</h3>
+    <table class="data" id="modelTable">
+      <thead>
+        <tr>
+          <th>이름</th>
+          <th>크기</th>
+          <th>수정일</th>
+          <th>Family</th>
+          <th>Quant</th>
+          <th>상태</th>
+          <th>액션</th>
+        </tr>
+      </thead>
+      <tbody id="modelBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- PULL MODEL -->
+<div id="panel-pull" class="panel">
+  <div class="section">
+    <h3>모델 다운로드</h3>
+    <div class="form-row">
+      <input type="text" id="pullModelName" placeholder="모델명 입력 (예: qwen2.5:7b, llama3.2:3b)">
+      <button class="btn btn-primary" id="pullBtn" onclick="pullModel()">Pull</button>
+    </div>
+    <div class="progress-bar" id="pullProgressBar">
+      <div class="progress-bar-fill" id="pullProgressFill" style="width:0%"></div>
+    </div>
+    <div class="progress-box" id="pullLog"></div>
+  </div>
+  <div class="section">
+    <h3>인기 모델</h3>
+    <div class="popular-grid" id="popularGrid"></div>
+  </div>
+</div>
+
+<!-- GPU STATUS -->
+<div id="panel-gpu" class="panel">
+  <div style="margin-bottom:12px;text-align:right">
+    <button class="btn btn-sm" onclick="loadGpuStatus()">새로고침</button>
+  </div>
+  <div class="section">
+    <h3>GPU 정보</h3>
+    <div class="gpu-card" id="gpuInfo">
+      <div class="gpu-metric"><div class="val" id="gpuName">-</div><div class="lbl">GPU</div></div>
+      <div class="gpu-metric"><div class="val" id="gpuVramTotal">-</div><div class="lbl">VRAM Total</div></div>
+      <div class="gpu-metric"><div class="val" id="gpuVramUsed">-</div><div class="lbl">VRAM Used</div></div>
+      <div class="gpu-metric"><div class="val" id="gpuVramFree">-</div><div class="lbl">VRAM Free</div></div>
+      <div class="gpu-metric"><div class="val" id="gpuTemp">-</div><div class="lbl">온도</div></div>
+      <div class="gpu-metric"><div class="val" id="gpuUtil">-</div><div class="lbl">사용률</div></div>
+    </div>
+  </div>
+  <div class="section">
+    <h3>로드된 모델</h3>
+    <table class="data">
+      <thead><tr><th>모델</th><th>메모리 사용</th><th>로드 시각</th></tr></thead>
+      <tbody id="gpuModelsBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div id="panel-settings" class="panel">
+  <div class="row">
+    <div class="section">
+      <h3>모델 스케줄링</h3>
+      <table class="data">
+        <tbody>
+          <tr><td>동시 로드 제한</td><td><strong>2 모델</strong></td></tr>
+          <tr><td>유휴 언로드</td><td><strong>5분</strong></td></tr>
+          <tr><td>메모리 임계값</td><td><strong>90%</strong></td></tr>
+          <tr><td>우선순위 정책</td><td><strong>FIFO + Priority</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="section">
+      <h3>Fast Lane 설정</h3>
+      <table class="data">
+        <tbody>
+          <tr><td>대상 조건</td><td><strong>3B 이하 모델</strong></td></tr>
+          <tr><td>우선순위 부스트</td><td><strong>+2 단계</strong></td></tr>
+          <tr><td>대상 모델</td><td style="font-size:10px;color:var(--muted)">gemma2:2b, phi3:3.8b, llama3.2:3b, qwen2.5:3b, qwen2.5:1.5b</td></tr>
+          <tr><td>임베딩 모델</td><td><strong>Fast Lane 적용</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+const BASE = (location.pathname.includes('/ollama') ? '/ollama' : '');
+let refreshTimer = null;
+let runningModelNames = [];
+
+// --- Tab ---
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    const panels = ['overview','pull','gpu','settings'];
+    t.classList.toggle('active', panels[i] === name);
+  });
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  if (name === 'gpu') loadGpuStatus();
+}
+
+// --- Toast ---
+function showToast(msg, type='info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + type + ' show';
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// --- Formatting ---
+function formatSize(bytes) {
+  if (!bytes) return '-';
+  const gb = bytes / 1073741824;
+  if (gb >= 1) return gb.toFixed(1) + ' GB';
+  return (bytes / 1048576).toFixed(0) + ' MB';
+}
+
+function formatDate(str) {
+  if (!str) return '-';
+  const d = new Date(str);
+  return d.toLocaleDateString('ko-KR', {month:'short', day:'numeric'}) + ' ' + d.toLocaleTimeString('ko-KR', {hour:'2-digit', minute:'2-digit'});
+}
+
+// --- Load Models ---
+async function loadModels() {
+  try {
+    const [statusRes, modelsRes] = await Promise.all([
+      fetch(BASE + '/api/status'),
+      fetch(BASE + '/api/models')
+    ]);
+    const status = await statusRes.json();
+    const modelsData = await modelsRes.json();
+
+    // Connection badge
+    const badge = document.getElementById('connBadge');
+    if (status.running) {
+      badge.textContent = 'ONLINE';
+      badge.className = 'status-badge online';
+    } else {
+      badge.textContent = 'OFFLINE';
+      badge.className = 'status-badge offline';
+    }
+
+    // Running model names
+    runningModelNames = (status.running_models || []).map(m => m.name || m);
+
+    const models = modelsData.models || [];
+
+    // Overview cards
+    document.getElementById('totalModels').textContent = models.length;
+    document.getElementById('runningModels').textContent = runningModelNames.length;
+    const totalBytes = models.reduce((s, m) => s + (m.size || 0), 0);
+    document.getElementById('totalSize').textContent = formatSize(totalBytes);
+
+    // Model table
+    const tbody = document.getElementById('modelBody');
+    tbody.innerHTML = models.map(m => {
+      const name = m.name || m.model || '-';
+      const isRunning = runningModelNames.some(r => r.includes(name.split(':')[0]));
+      const family = (m.details && m.details.family) || '-';
+      const quant = (m.details && m.details.quantization_level) || '-';
+      const statusBadge = isRunning
+        ? '<span class="badge badge-ok">LOADED</span>'
+        : '<span class="badge badge-idle">IDLE</span>';
+      const actionBtn = isRunning
+        ? `<button class="btn btn-sm" onclick="unloadModel('${name}')">Unload</button>`
+        : `<button class="btn btn-sm" onclick="loadModel('${name}')">Load</button>`;
+      return `<tr>
+        <td><strong>${name}</strong></td>
+        <td>${formatSize(m.size)}</td>
+        <td>${formatDate(m.modified_at)}</td>
+        <td>${family}</td>
+        <td>${quant}</td>
+        <td>${statusBadge}</td>
+        <td style="display:flex;gap:4px">${actionBtn}<button class="btn btn-sm btn-danger" onclick="deleteModel('${name}')">삭제</button></td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('lastUpdate').textContent = '마지막 업데이트: ' + new Date().toLocaleTimeString('ko-KR');
+  } catch (e) {
+    document.getElementById('connBadge').textContent = 'OFFLINE';
+    document.getElementById('connBadge').className = 'status-badge offline';
+    console.error('loadModels error:', e);
+  }
+}
+
+// --- Load/Unload/Delete ---
+async function loadModel(name) {
+  showToast(name + ' 로드 중...', 'info');
+  try {
+    await fetch(BASE + '/api/generate', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({model: name, prompt: '', keep_alive: '5m'})
+    });
+    showToast(name + ' 로드 완료', 'success');
+    setTimeout(loadModels, 1000);
+  } catch (e) {
+    showToast('로드 실패: ' + e.message, 'error');
+  }
+}
+
+async function unloadModel(name) {
+  showToast(name + ' 언로드 중...', 'info');
+  try {
+    await fetch(BASE + '/api/generate', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({model: name, prompt: '', keep_alive: '0'})
+    });
+    showToast(name + ' 언로드 완료', 'success');
+    setTimeout(loadModels, 1000);
+  } catch (e) {
+    showToast('언로드 실패: ' + e.message, 'error');
+  }
+}
+
+async function deleteModel(name) {
+  if (!confirm(name + ' 모델을 삭제하시겠습니까?')) return;
+  try {
+    const res = await fetch(BASE + '/api/delete', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({model: name})
+    });
+    if (res.ok) {
+      showToast(name + ' 삭제 완료', 'success');
+      setTimeout(loadModels, 500);
+    } else {
+      showToast('삭제 실패', 'error');
+    }
+  } catch (e) {
+    showToast('삭제 실패: ' + e.message, 'error');
+  }
+}
+
+// --- Pull Model ---
+async function pullModel(modelName) {
+  const name = modelName || document.getElementById('pullModelName').value.trim();
+  if (!name) { showToast('모델명을 입력하세요', 'error'); return; }
+
+  const btn = document.getElementById('pullBtn');
+  const logBox = document.getElementById('pullLog');
+  const progressBar = document.getElementById('pullProgressBar');
+  const progressFill = document.getElementById('pullProgressFill');
+
+  btn.disabled = true;
+  logBox.style.display = 'block';
+  progressBar.style.display = 'block';
+  logBox.textContent = '';
+  progressFill.style.width = '0%';
+  showToast(name + ' 다운로드 시작...', 'info');
+
+  try {
+    const res = await fetch(BASE + '/api/pull', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({model: name})
+    });
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, {stream: true});
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const data = JSON.parse(line);
+          if (data.status) {
+            logBox.textContent += data.status + (data.completed && data.total ? ` (${Math.round(data.completed/data.total*100)}%)` : '') + '\n';
+            logBox.scrollTop = logBox.scrollHeight;
+          }
+          if (data.completed && data.total) {
+            const pct = Math.round(data.completed / data.total * 100);
+            progressFill.style.width = pct + '%';
+          }
+          if (data.status === 'success') {
+            progressFill.style.width = '100%';
+          }
+        } catch (e) {}
+      }
+    }
+    showToast(name + ' 다운로드 완료!', 'success');
+    setTimeout(loadModels, 1000);
+  } catch (e) {
+    showToast('다운로드 실패: ' + e.message, 'error');
+    logBox.textContent += '\nERROR: ' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// --- Popular Models ---
+const POPULAR_MODELS = [
+  {name:'qwen2.5:7b', size:'4.7 GB'},
+  {name:'qwen2.5:14b', size:'9.0 GB'},
+  {name:'qwen2.5:3b', size:'2.0 GB'},
+  {name:'qwen3:8b', size:'5.2 GB'},
+  {name:'llama3.2:3b', size:'2.0 GB'},
+  {name:'llama3.1:8b', size:'4.7 GB'},
+  {name:'gemma2:2b', size:'1.6 GB'},
+  {name:'phi3:3.8b', size:'2.3 GB'},
+  {name:'mistral:7b', size:'4.1 GB'},
+  {name:'codellama:7b', size:'3.8 GB'},
+  {name:'nomic-embed-text', size:'274 MB'},
+  {name:'qwen2.5-coder:7b', size:'4.7 GB'},
+];
+
+function renderPopular() {
+  const grid = document.getElementById('popularGrid');
+  grid.innerHTML = POPULAR_MODELS.map(m => `
+    <div class="popular-item">
+      <div><div class="name">${m.name}</div><div class="size">${m.size}</div></div>
+      <button class="btn btn-sm btn-primary" onclick="pullModel('${m.name}')">Pull</button>
+    </div>
+  `).join('');
+}
+
+// --- GPU Status ---
+async function loadGpuStatus() {
+  try {
+    const res = await fetch(BASE + '/api/gpu/status');
+    if (!res.ok) throw new Error('GPU API 미지원');
+    const data = await res.json();
+
+    document.getElementById('gpuName').textContent = data.name || data.gpu_name || '-';
+    document.getElementById('gpuVramTotal').textContent = data.vram_total ? formatSize(data.vram_total) : (data.memory_total || '-');
+    document.getElementById('gpuVramUsed').textContent = data.vram_used ? formatSize(data.vram_used) : (data.memory_used || '-');
+    document.getElementById('gpuVramFree').textContent = data.vram_free ? formatSize(data.vram_free) : (data.memory_free || '-');
+    document.getElementById('gpuTemp').textContent = data.temperature != null ? data.temperature + '\u00B0C' : '-';
+    document.getElementById('gpuUtil').textContent = data.utilization != null ? data.utilization + '%' : '-';
+    document.getElementById('gpuVram').textContent = data.vram_used ? formatSize(data.vram_used) : '-';
+
+    // Running models in GPU tab
+    const models = data.running_models || data.models || [];
+    const tbody = document.getElementById('gpuModelsBody');
+    if (models.length > 0) {
+      tbody.innerHTML = models.map(m => `<tr>
+        <td><strong>${m.name || m.model || '-'}</strong></td>
+        <td>${m.size ? formatSize(m.size) : (m.memory || '-')}</td>
+        <td>${m.loaded_at ? formatDate(m.loaded_at) : '-'}</td>
+      </tr>`).join('');
+    } else {
+      tbody.innerHTML = '<tr><td colspan="3" style="color:var(--muted);text-align:center">로드된 모델 없음</td></tr>';
+    }
+  } catch (e) {
+    document.getElementById('gpuName').textContent = 'N/A';
+    document.getElementById('gpuVramTotal').textContent = '-';
+    document.getElementById('gpuVramUsed').textContent = '-';
+    document.getElementById('gpuVramFree').textContent = '-';
+    document.getElementById('gpuTemp').textContent = '-';
+    document.getElementById('gpuUtil').textContent = '-';
+    const tbody = document.getElementById('gpuModelsBody');
+    tbody.innerHTML = '<tr><td colspan="3" style="color:var(--muted);text-align:center">GPU 정보를 가져올 수 없습니다</td></tr>';
+  }
+}
+
+// --- Init ---
+function startRefresh() {
+  if (!refreshTimer) refreshTimer = setInterval(loadModels, 30000);
+}
+function stopRefresh() {
+  if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) stopRefresh();
+  else { loadModels(); startRefresh(); }
+});
+
+function init() {
+  loadModels();
+  renderPopular();
+  loadGpuStatus();
+  startRefresh();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+
+// Pull on Enter key
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('pullModelName').addEventListener('keydown', e => {
+    if (e.key === 'Enter') pullModel();
+  });
+});
+</script>
+</body>
+</html>

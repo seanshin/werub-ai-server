@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WeRU.B LLM 품질 모니터</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0f1117; --surface: #1a1d27; --surface2: #232734; --border: #2a2d3a;
+  --text: #e4e4e7; --muted: #a1a1aa; --dim: #71717a; --warn: #f59e0b;
+}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+       background: var(--bg); color: var(--text); min-height: 100vh; }
+.header { padding: 12px 24px; background: var(--surface); border-bottom: 1px solid var(--border);
+          display: flex; align-items: center; gap: 14px; position: sticky; top: 0; z-index: 5; }
+.header h1 { font-size: 15px; font-weight: 600; }
+.header .sub { font-size: 11px; color: var(--muted); }
+.header .right { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--muted); }
+select, button { padding: 4px 10px; border: 1px solid var(--border); background: var(--bg);
+                 color: var(--text); border-radius: 5px; font-size: 11px; cursor: pointer; }
+button:hover { border-color: var(--dim); }
+.wrap { max-width: 1400px; margin: 0 auto; padding: 18px 24px 40px; }
+.hero { display: grid; grid-template-columns: 300px 1fr; gap: 14px; margin-bottom: 14px; }
+.hero-score { background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+              padding: 14px 16px; display: flex; flex-direction: column; justify-content: center; }
+.hero-score .k { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.hero-score .num { font-size: 40px; font-weight: 800; line-height: 1; }
+.hero-score .grade { font-size: 20px; font-weight: 700; margin-left: 10px; padding: 2px 10px;
+                     border-radius: 6px; background: var(--surface2); vertical-align: middle; }
+.hero-score .cap { font-size: 10.5px; color: var(--dim); margin-top: 8px; line-height: 1.5; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+         gap: 10px; margin-bottom: 14px; }
+.tile { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+.tile .k { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+.tile .v { font-size: 19px; font-weight: 700; }
+.tile .v.warn { color: var(--warn); }
+#failedChecks { font-size: 12px; color: var(--warn); margin-bottom: 14px; min-height: 16px; }
+.charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+          gap: 14px; margin-bottom: 16px; }
+.chartbox { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+.chartbox .t { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+         padding: 12px; margin-bottom: 14px; }
+.panel h2 { font-size: 12px; color: var(--muted); font-weight: 600; margin-bottom: 8px; }
+table { width: 100%; font-size: 12px; border-collapse: collapse; }
+th { color: var(--muted); text-align: left; font-weight: 500; padding: 4px 6px; }
+td { padding: 5px 6px; border-top: 1px solid var(--border); }
+td.warn { color: var(--warn); }
+.qcol { max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#bench { font-size: 11px; color: var(--muted); }
+.empty { color: var(--dim); font-size: 12px; padding: 8px 0; }
+tbody tr.clickable { cursor: pointer; }
+tbody tr.clickable:hover { background: var(--surface2); }
+/* 드릴다운 모달 */
+#modalOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 20; }
+#modal { position: fixed; top: 4vh; left: 50%; transform: translateX(-50%);
+         width: min(960px, 94vw); max-height: 90vh; overflow-y: auto; z-index: 21;
+         background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+         padding: 18px 20px; display: none; }
+#modal h2 { font-size: 14px; margin-bottom: 4px; padding-right: 40px; }
+#modal .meta { font-size: 11px; color: var(--muted); margin-bottom: 12px; }
+#modal .close { position: absolute; top: 12px; right: 14px; }
+#modal h4 { font-size: 12px; color: var(--muted); margin: 14px 0 6px; }
+#modal .box { background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+              padding: 10px 12px; font-size: 12px; line-height: 1.7; white-space: pre-wrap;
+              word-break: break-word; max-height: 260px; overflow-y: auto; }
+#modal table { font-size: 11.5px; }
+.v-ok { color: #4ade80; } .v-bad { color: var(--warn); } .v-dim { color: var(--dim); }
+.chip { display: inline-block; padding: 1px 7px; border-radius: 9px; font-size: 10.5px;
+        background: var(--surface2); margin: 1px 3px 1px 0; }
+.chip.fail { color: var(--warn); border: 1px solid var(--warn); }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>LLM 품질 모니터</h1>
+  <span class="sub" id="pipelineInfo">충실도·교차검증·체크리스트 — 야간 배치(03:30) + 수동 평가 실시간 반영</span>
+  <div class="right">
+    <span id="lastRefresh">--</span>
+    <select id="intervalSel" onchange="setRefreshInterval()">
+      <option value="5000">5초</option>
+      <option value="10000" selected>10초</option>
+      <option value="30000">30초</option>
+      <option value="60000">60초</option>
+      <option value="300000">5분</option>
+    </select>
+    <button onclick="refresh(true)">지금 갱신</button>
+  </div>
+</div>
+<div class="wrap">
+  <div class="hero" id="heroRow" style="display:none;">
+    <div class="hero-score" onclick="openMetric('qi')" style="cursor:pointer;" title="클릭=산식·구성 분해">
+      <div class="k">품질 종합 지수 <span id="qiVersion" style="color:var(--dim)"></span> <span style="color:var(--dim);font-size:9px;">ⓘ</span></div>
+      <div><span class="num" id="qiScore">--</span><span class="grade" id="qiGrade">-</span></div>
+      <div class="cap">내부 관리지표(추세·회귀 감시용) — 가중: 충실도 35 · 무환각 15 · strict 10 · 품질 25 · 체크 10 · 한국어 5</div>
+    </div>
+    <div class="chartbox"><div class="t">품질 지수 추세 (0~100)</div>
+      <canvas id="chIndex" height="66"></canvas></div>
+  </div>
+  <div class="tiles" id="tiles"></div>
+  <div id="failedChecks"></div>
+  <!-- 통합 이슈 리스트 — 전 지표의 검토·개선 항목 한눈에 (v2.124.2) -->
+  <div class="panel" id="issuePanel" style="display:none;">
+    <h2 style="display:flex;align-items:center;gap:8px;">
+      이슈·리뷰 통합 리스트 <span id="issueCount" style="color:var(--warn);">--</span>
+      <button onclick="copyIssues()" style="margin-left:auto;">텍스트 복사</button>
+    </h2>
+    <table>
+      <thead><tr><th style="width:110px;">유형</th><th>질문</th><th>상세</th></tr></thead>
+      <tbody id="issueBody"></tbody>
+    </table>
+    <div style="font-size:10.5px;color:var(--dim);margin-top:6px;">
+      심각도순 정렬 · 행 클릭=질문 드릴다운 · 전부 검토 트리거이지 결함 확정 아님(판독 규율)</div>
+  </div>
+  <div class="charts">
+    <div class="chartbox"><div class="t">신뢰성 추세 — 충실도·strict·교차검증·검색 정밀도 (0~1)</div>
+      <canvas id="chFaith" height="110"></canvas></div>
+    <div class="chartbox"><div class="t">품질 차원 추세 (1~5)</div>
+      <canvas id="chDims" height="110"></canvas></div>
+    <div class="chartbox"><div class="t">체크리스트 통과율 추세 (0~1)</div>
+      <canvas id="chChecks" height="110"></canvas></div>
+    <div class="chartbox"><div class="t">리뷰 트리거 추세 (건) — 환각 플래그·교차검증 불일치</div>
+      <canvas id="chTrig" height="110"></canvas></div>
+  </div>
+  <div id="trendBreaks" style="font-size:12px;color:var(--muted);margin:-6px 0 10px 4px"></div>
+  <div class="panel">
+    <h2>질문별 세부 진단 (최신 배치)</h2>
+    <table>
+      <thead><tr><th>질문</th><th>서비스</th><th>충실도</th><th>주장</th><th>교차검증</th><th>품질</th><th>체크 실패</th></tr></thead>
+      <tbody id="detailBody"><tr><td colspan="7" class="empty">로딩…</td></tr></tbody>
+    </table>
+  </div>
+  <div class="panel"><h2>모델 벤치마크 (최신)</h2><div id="bench">--</div></div>
+</div>
+
+<!-- 질문 드릴다운 모달 -->
+<div id="modalOverlay" onclick="closeDetail()"></div>
+<div id="modal">
+  <button class="close" onclick="closeDetail()">닫기 ✕</button>
+  <h2 id="mQ">--</h2>
+  <div class="meta" id="mMeta">--</div>
+  <div id="mBody" class="empty">로딩…</div>
+</div>
+
+<script>
+// 팔레트 — 다크 서피스 #1a1d27 대비 검증 통과(#16a34a·#a855f7·#0284c7·#f43f5e)
+const C = { green: '#16a34a', purple: '#a855f7', blue: '#0284c7', rose: '#f43f5e' };
+// 리버스 프록시 경로 프리픽스 자동 감지 — 외부(example.org/ollama/eval-monitor)면 /ollama,
+// 로컬(/eval-monitor)이면 빈 문자열. 절대경로 /api/...는 프록시 밖으로 나가 데이터 안 잡힘.
+const BASE = location.pathname.replace(/\/eval-monitor\/?$/, '');
+// 평가 대상 source → 호출 서비스 라벨 (eval 러너가 실제 호출한 엔드포인트)
+const SVC = {
+  medical_law: '의료법 RAG · /api/medical-law/ask',
+  general_chat: '일반 챗 · /api/chat',
+};
+const svcLabel = s => SVC[s] || s || '—';
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g,
+  c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+let charts = {}, timer = null;
+
+const lineOpts = (yMin, yMax, legend = true) => ({
+  responsive: true, animation: false,
+  interaction: { mode: 'index', intersect: false },
+  plugins: { legend: { display: legend, labels: { color: '#a1a1aa', font: { size: 10 },
+                       boxWidth: 9, boxHeight: 9, padding: 8 } } },
+  scales: { x: { ticks: { color: '#71717a', font: { size: 9 }, maxTicksLimit: 8 }, grid: { display: false } },
+            y: { min: yMin, max: yMax, ticks: { color: '#71717a', font: { size: 10 }, maxTicksLimit: 4 },
+                 grid: { color: '#2a2d3a' } } },
+});
+const ds = (label, data, color, extra) => Object.assign({
+  label, data, borderColor: color, backgroundColor: color,
+  borderWidth: 2, tension: 0.3, pointRadius: 2.5, spanGaps: false, fill: false,
+}, extra || {});
+
+function upsertChart(id, cfg) {
+  if (charts[id]) {                      // 데이터만 갱신 — 깜빡임 방지
+    charts[id].data = cfg.data;
+    charts[id].update('none');
+    return;
+  }
+  charts[id] = new Chart(document.getElementById(id), cfg);
+}
+
+let LAST = null;   // 최근 fetch 데이터 — 타일 클릭 상세 모달용
+
+function tile(k, v, warn, key) {
+  const click = key ? ` onclick="openMetric('${key}')" style="cursor:pointer;" title="클릭=지표 상세"` : '';
+  return `<div class="tile"${click}><div class="k">${esc(k)} ${key ? '<span style="color:var(--dim);font-size:9px;">ⓘ</span>' : ''}</div><div class="v${warn ? ' warn' : ''}">${esc(v)}</div></div>`;
+}
+
+async function refresh(manual) {
+  let d;
+  try { d = await fetch(BASE + '/api/eval/status').then(r => r.json()); }
+  catch (e) { document.getElementById('lastRefresh').textContent = '갱신 실패'; return; }
+  if (!d.available) { document.getElementById('lastRefresh').textContent = '평가 데이터 없음'; return; }
+  const f = d.faithfulness || {}, q = d.quality || {};
+
+  // KPI 타일 (클릭=지표 상세 모달)
+  LAST = d;
+  const s = q; // 차원 평균은 quality 블록
+  document.getElementById('tiles').innerHTML = [
+    tile('충실도(RAG)', f.mean != null ? f.mean.toFixed(3) : '--', false, 'faith'),
+    tile('환각 플래그', f.hallucinations != null ? `${f.hallucinations}/${f.n}` : '--', f.hallucinations > 0, 'halluc'),
+    tile('교차검증 일치', f.mc_agree != null ? (f.mc_agree * 100).toFixed(0) + '%' : '--', false, 'mc'),
+    tile('리뷰 트리거', f.mc_conflicts != null ? f.mc_conflicts + '건' : '--', f.mc_conflicts > 0, 'triggers'),
+    tile('법령명 오귀속', f.law_misattributed != null ? `${f.law_misattributed}/${f.n}` : '--', f.law_misattributed > 0, 'lawattr'),
+    tile('판정 확신', f.confidence ? f.confidence.mean.toFixed(3) : '--',
+         !!(f.confidence && f.confidence.low > 0), 'conf'),
+    tile('망설인 주장', f.confidence ? `${f.confidence.low}/${f.confidence.n}` : '--',
+         !!(f.confidence && f.confidence.low > 0), 'conf'),
+    tile('strict 충실도', f.strict != null ? f.strict.toFixed(3) : '--', false, 'strict'),
+    tile('검색 정밀도', f.ctx_precision != null ? (f.ctx_precision * 100).toFixed(0) + '%' : '--',
+         f.ctx_precision != null && f.ctx_precision < 0.5, 'ctxp'),
+    tile('근거 충분성', f.ctx_sufficiency != null ? (f.ctx_sufficiency * 100).toFixed(0) + '%' : '--',
+         f.ctx_sufficiency != null && f.ctx_sufficiency < 0.75, 'ctxs'),
+    tile('품질 overall', s.overall != null ? s.overall + '/5' : '--', false, 'overall'),
+    tile('정확성', s.accuracy != null ? s.accuracy + '/5' : '--', false, 'accuracy'),
+    tile('도움됨', s.helpfulness != null ? s.helpfulness + '/5' : '--', false, 'helpfulness'),
+    tile('안전성', s.safety != null ? s.safety + '/5' : '--', false, 'safety'),
+    tile('자연성', s.fluency != null ? s.fluency + '/5' : '--', false, 'fluency'),
+    tile('체크리스트 통과', s.checks_rate != null ? (s.checks_rate * 100).toFixed(0) + '%' : '--', false, 'checks'),
+    tile('한국어 비율', s.korean_ratio != null ? (s.korean_ratio * 100).toFixed(0) + '%' : '--', false, 'korean'),
+    tile('judge 일관성', d.judge_consistency && d.judge_consistency.flip_rate != null
+         ? (100 - d.judge_consistency.flip_rate * 100).toFixed(0) + '%' : '--',
+         d.judge_consistency && d.judge_consistency.flip_rate > 0.2, 'judge'),
+  ].join('');
+
+  // 품질 종합 지수 히어로 (qi-1.0)
+  const GRADE_COLOR = { A: '#16a34a', B: '#0284c7', C: '#f59e0b', D: '#f43f5e' };
+  if (d.quality_index) {
+    const qi = d.quality_index;
+    document.getElementById('heroRow').style.display = 'grid';
+    const sc = document.getElementById('qiScore'), gr = document.getElementById('qiGrade');
+    sc.textContent = qi.score.toFixed(1);
+    sc.style.color = GRADE_COLOR[qi.grade] || '';
+    gr.textContent = qi.grade;
+    gr.style.color = GRADE_COLOR[qi.grade] || '';
+    document.getElementById('qiVersion').textContent = qi.version || '';
+    const ti = d.trend_index || [];
+    if (ti.length >= 2 && typeof Chart !== 'undefined') {
+      upsertChart('chIndex', { type: 'line', data: {
+        labels: ti.map(p => (p.ts || '').slice(5, 16).replace('T', ' ')),
+        datasets: [ds('품질 지수', ti.map(p => p.score), '#16a34a',
+                      { backgroundColor: 'rgba(22,163,74,0.08)', fill: true })],
+      }, options: lineOpts(0, 100, false) });
+    }
+  }
+
+  // 평가 파이프라인 표기 — 호출 서비스·judge·교차검증 모델
+  const pi = [];
+  if (f.source) pi.push('대상: ' + svcLabel(f.source));
+  const jm = f.judge_model || q.judge_model;
+  if (jm) pi.push('judge: ' + jm);
+  if (f.mc_agree != null) pi.push('교차검증: MiniCheck');
+  if (pi.length) document.getElementById('pipelineInfo').textContent = pi.join(' · ');
+
+  // 개선 지점
+  const fc = document.getElementById('failedChecks');
+  fc.textContent = (q.checks_failed_top && q.checks_failed_top.length)
+    ? '개선 지점: ' + q.checks_failed_top.map(([i, n]) => `${i}${n > 1 ? ' ×' + n : ''}`).join(' · ')
+    : '';
+
+  // 통합 이슈 리스트(전 지표 집계)
+  try { renderIssues(d); } catch (e) { /* 표시 실패만 — 다음 폴링서 복구 */ }
+
+  // 추세 단절점 — 측정 조건이 바뀐 지점(judge 교체·근거 표현·거리 공간). 앞뒤를 이어 읽지 말 것.
+  const tb = d.trend_breaks || [];
+  const tbEl = document.getElementById('trendBreaks');
+  if (tbEl) tbEl.innerHTML = tb.length
+    ? '⚠ 추세 단절점(앞뒤 비교 금지): ' + tb.map(b => `<b>${(b.ts || '').slice(0, 10)}</b> ${b.kind} — ${b.note}`).join(' · ')
+    : '';
+  // 시계열 4종
+  const tf = d.trend_faithfulness || [], tq = d.trend_quality || [];
+  const lblF = tf.map(p => (p.ts || '').slice(5, 16).replace('T', ' '));
+  const lblQ = tq.map(p => (p.ts || '').slice(5, 16).replace('T', ' '));
+  upsertChart('chFaith', { type: 'line', data: { labels: lblF, datasets: [
+    ds('충실도', tf.map(p => p.mean), C.green, { backgroundColor: 'rgba(22,163,74,0.08)', fill: true }),
+    ds('strict', tf.map(p => p.strict), C.blue),
+    ds('교차 일치', tf.map(p => p.mc_agree), C.purple),
+    ds('검색 정밀도', tf.map(p => p.ctx_precision), C.rose),
+  ] }, options: lineOpts(0, 1) });
+  upsertChart('chDims', { type: 'line', data: { labels: lblQ, datasets: [
+    ds('정확성', tq.map(p => p.accuracy), C.green),
+    ds('도움됨', tq.map(p => p.helpfulness), C.blue),
+    ds('안전성', tq.map(p => p.safety), C.purple),
+    ds('자연성', tq.map(p => p.fluency), C.rose),
+  ] }, options: lineOpts(1, 5) });
+  upsertChart('chChecks', { type: 'line', data: { labels: lblQ, datasets: [
+    ds('체크리스트 통과율', tq.map(p => p.checks_rate), C.purple,
+       { backgroundColor: 'rgba(168,85,247,0.08)', fill: true }),
+  ] }, options: lineOpts(0, 1, false) });
+  upsertChart('chTrig', { type: 'bar', data: { labels: lblF, datasets: [
+    { label: '환각 플래그', data: tf.map(p => p.hallucinations), backgroundColor: C.rose,
+      borderRadius: 3, maxBarThickness: 16 },
+    { label: '교차 불일치', data: tf.map(p => p.mc_conflicts), backgroundColor: C.blue,
+      borderRadius: 3, maxBarThickness: 16 },
+  ] }, options: { responsive: true, animation: false,
+    plugins: { legend: { display: true, labels: { color: '#a1a1aa', font: { size: 10 },
+                         boxWidth: 9, boxHeight: 9, padding: 8 } } },
+    scales: { x: { ticks: { color: '#71717a', font: { size: 9 }, maxTicksLimit: 8 }, grid: { display: false } },
+              y: { beginAtZero: true, ticks: { color: '#71717a', font: { size: 10 },
+                   maxTicksLimit: 4, precision: 0 }, grid: { color: '#2a2d3a' } } } } });
+
+  // 질문별 세부 진단
+  const qByQ = {};
+  (q.questions || []).forEach(x => { qByQ[x.q] = x; });
+  const fq = f.questions || [];
+  document.getElementById('detailBody').innerHTML = fq.length ? fq.map(x => {
+    const qq = qByQ[x.q] || {};
+    const mc = x.mc_agree != null
+      ? `${(x.mc_agree * 100).toFixed(0)}%${x.mc_conflicts ? ' ⚠' + x.mc_conflicts : ''}` : '—';
+    const failed = (qq.checks_failed || []).join(', ') || '—';
+    const warn = (x.mc_conflicts > 0 || x.contradicted > 0 || (qq.checks_failed || []).length) ? ' class="warn"' : '';
+    return `<tr class="clickable" onclick="openDetail(${x.id || 'null'}, ${qq.id || 'null'}, this.dataset.q)" data-q="${esc(x.q)}" title="클릭=상세 검토">
+      <td class="qcol">${esc(x.q)}</td>
+      <td class="qcol" style="max-width:200px;" title="${esc(svcLabel(x.source))}">${esc(svcLabel(x.source))}</td>
+      <td>${x.faith != null ? x.faith.toFixed(3) : '—'}</td>
+      <td>${x.claims ?? '—'}</td>
+      <td${warn}>${esc(mc)}</td>
+      <td>${qq.overall != null ? qq.overall + '/5' : '—'}</td>
+      <td${warn} class="qcol" title="${esc(failed)}">${esc(failed)}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="7" class="empty">최신 배치 세부 데이터 없음</td></tr>';
+
+  // 벤치
+  document.getElementById('bench').textContent = (d.benchmarks && d.benchmarks.length)
+    ? d.benchmarks.map(b => `${b.model.split('/').pop()} ${b.accuracy}%`).join(' · ')
+    : '--';
+
+  document.getElementById('lastRefresh').textContent =
+    (manual ? '수동 ' : '') + '갱신 ' + new Date().toLocaleTimeString('ko-KR');
+}
+
+function setRefreshInterval() {
+  if (timer) clearInterval(timer);
+  timer = setInterval(refresh, parseInt(document.getElementById('intervalSel').value, 10));
+}
+
+// ── 통합 이슈 리스트 — 전 지표의 검토·개선 항목 집계(심각도순) ─────────────────
+const ISSUE_TYPES = {   // 심각도 오름차순=우선순위
+  halluc:   { sev: 1, label: '환각 플래그',   color: '#f43f5e' },
+  lawattr:  { sev: 1, label: '법령명 오귀속', color: '#f43f5e' },
+  conflict: { sev: 2, label: '교차 불일치',   color: '#f43f5e' },
+  ctx_miss: { sev: 3, label: '검색 누락',     color: '#f59e0b' },
+  checks:   { sev: 4, label: '체크 실패',     color: '#f59e0b' },
+  ctx_noise:{ sev: 5, label: '검색 노이즈',   color: '#f59e0b' },
+  judge:    { sev: 6, label: 'judge 불안정',  color: '#0284c7' },
+};
+
+function buildIssues(d) {
+  const f = d.faithfulness || {}, q = d.quality || {}, jc = d.judge_consistency || {};
+  const fq = f.questions || [], qq = q.questions || [];
+  const qByQ = {}; qq.forEach(x => { qByQ[x.q] = x; });
+  const fByQ = {}; fq.forEach(x => { fByQ[x.q] = x; });
+  const issues = [];
+  const push = (type, qtext, detail) => issues.push({
+    type, q: qtext, detail,
+    fid: (fByQ[qtext] || {}).id || null, qid: (qByQ[qtext] || {}).id || null });
+  fq.forEach(x => {
+    if (x.contradicted > 0 || (x.faith != null && x.faith < 0.5))
+      push('halluc', x.q, `충실도 ${f3(x.faith)} · contradicted ${x.contradicted || 0}건`);
+    if (x.mc_conflicts > 0)
+      push('conflict', x.q, `judge↔MiniCheck 불일치 ${x.mc_conflicts}건 (일치율 ${pct(x.mc_agree)})`);
+    if ((x.law_misattributed || []).length)
+      push('lawattr', x.q, `법령명 오귀속 — 근거에 없는 법률명 인용: ${x.law_misattributed.join(', ')} (judge는 이 축을 못 봄 · faith가 1.0이어도 결함)`);
+    if (x.entail_prob && x.entail_prob.low > 0)
+      push('conf', x.q, `판정자가 망설인 주장 ${x.entail_prob.low}건 (평균 확신 ${f3(x.entail_prob.mean)}) — 판정은 났지만 확률이 0.35~0.65. 드릴다운에서 원문 확인`);
+    if (x.ctx_sufficiency != null && x.ctx_sufficiency < 0.75)
+      push('ctx_miss', x.q, `근거 충분성 ${pct(x.ctx_sufficiency)} — 검색이 필요한 정보를 다 못 가져옴`);
+    if (x.ctx_precision != null && x.ctx_precision < 0.3)
+      push('ctx_noise', x.q, `검색 정밀도 ${pct(x.ctx_precision)} — 무관 청크 다수(드릴다운 청크 테이블 참조)`);
+  });
+  qq.forEach(x => {
+    if ((x.checks_failed || []).length)
+      push('checks', x.q, x.checks_failed.join(', '));
+  });
+  (jc.questions || []).forEach(x => {
+    if ((x.flipped || []).length)
+      push('judge', x.q, `반복 채점 flip: ${x.flipped.join(', ')} (std ${x.overall_std})`);
+  });
+  issues.sort((a, b) => ISSUE_TYPES[a.type].sev - ISSUE_TYPES[b.type].sev);
+  return issues;
+}
+
+function renderIssues(d) {
+  const panel = document.getElementById('issuePanel');
+  const issues = buildIssues(d);
+  if (!issues.length) { panel.style.display = 'none'; return; }
+  panel.style.display = '';
+  document.getElementById('issueCount').textContent = issues.length + '건';
+  document.getElementById('issueBody').innerHTML = issues.map(it => {
+    const t = ISSUE_TYPES[it.type];
+    const clickable = (it.fid || it.qid)
+      ? ` class="clickable" onclick="openDetail(${it.fid || 'null'}, ${it.qid || 'null'}, this.dataset.q)" data-q="${esc(it.q)}"` : '';
+    return `<tr${clickable}>
+      <td><span class="chip" style="color:${t.color};border:1px solid ${t.color};">${t.label}</span></td>
+      <td class="qcol" style="max-width:300px;">${esc(it.q)}</td>
+      <td class="qcol" style="max-width:520px;" title="${esc(it.detail)}">${esc(it.detail)}</td></tr>`;
+  }).join('');
+}
+
+function copyIssues() {
+  if (!LAST) return;
+  const issues = buildIssues(LAST);
+  const ts = ((LAST.faithfulness || {}).ts || '').slice(0, 19).replace('T', ' ');
+  const lines = [`[LLM 품질 이슈 리스트] 배치 ${ts} · ${issues.length}건`,
+    ...issues.map(it => `- [${ISSUE_TYPES[it.type].label}] ${it.q} — ${it.detail}`)];
+  navigator.clipboard.writeText(lines.join('\n')).then(() => {
+    const el = document.getElementById('issueCount');
+    const orig = el.textContent;
+    el.textContent = orig + ' · 복사됨 ✓';
+    setTimeout(() => { el.textContent = orig; }, 2000);
+  }).catch(() => {});
+}
+
+// ── 지표 상세 모달 (KPI 타일 클릭) — 정의·판독 규율·질문별 분해 ──────────────
+const pct = v => v != null ? (v * 100).toFixed(0) + '%' : '—';
+const f3 = v => v != null ? Number(v).toFixed(3) : '—';
+const s5 = v => v != null ? v + '/5' : '—';
+// key: {t:제목, d:정의·판독, src:질문 배열 소스, val:질문→표시값, raw:정렬용 수치(낮을수록 나쁨), extra}
+const METRIC_INFO = {
+  faith: { t: '충실도(RAG)', src: 'f', val: x => f3(x.faith), raw: x => x.faith,
+    d: '답변의 주장 중 근거가 지지(supported)하는 비율 — 주장 단위 judge 판정. 낮음=근거 밖 서술. 플래그는 검토 트리거이지 결함 확정이 아님(드릴다운으로 원문 판정).' },
+  halluc: { t: '환각 플래그', src: 'f', val: x => (x.contradicted > 0 || (x.faith != null && x.faith < 0.5)) ? '⚠ 플래그' : '—', raw: x => -(x.contradicted || 0),
+    d: 'contradicted 주장 존재 또는 지지율<0.5인 질문. contradicted(근거 모순=위험)와 unsupported(근거 미포함=커버리지)를 구분해 읽을 것.' },
+  mc: { t: '교차검증 일치', src: 'f', val: x => pct(x.mc_agree), raw: x => x.mc_agree,
+    d: 'judge(14b)와 교차검증자(eval.verifier=qwen2.5:7b — **다른 체크포인트**를 써야 모델 이종성이 확보된다)의 주장 판정 일치율. ⚠️bespoke-minicheck는 CC BY-NC라 v2.124.14에 설치본에서 제거됐다(함수·축 이름만 남음). 불일치=리뷰 신호 — MiniCheck는 간접 함의·청크 경계에서 위음성 가능(개설 벌칙 사례).' },
+  triggers: { t: '리뷰 트리거', src: 'f', val: x => x.mc_conflicts ? '⚠' + x.mc_conflicts + '건' : '—', raw: x => -(x.mc_conflicts || 0),
+    d: '교차검증 불일치 주장 수 — 질문 행을 클릭해 드릴다운에서 어느 주장인지 원문 확인.' },
+  lawattr: { t: '법령명 오귀속', src: 'f', val: x => (x.law_misattributed || []).length ? '⚠ ' + x.law_misattributed.join(', ') : (x.law_misattributed == null ? '미측정' : '—'), raw: x => -((x.law_misattributed || []).length),
+    d: '답변이 인용한 법률명 중 근거 본문(라벨 포함) 어디에도 없는 것 — LLM 없는 결정적 계산(core/law_attribution). 충실도 judge는 주장 내용만 대조하고 어느 법률의 조문인가는 안 보므로 faith 1.000으로 통과한 오귀속을 잡는 축(v2.125.8). ⚠️2026-08-19 이전 배치=평가 근거가 법령명 라벨을 싣지 않아 무효(08-18 배치 22/40은 전부 위양성 → null 처리·추세 단절점).' },
+  conf: { t: '판정 확신', src: 'f',
+    val: x => { const e = x.entail_prob;
+                if (!e || !e.n) return '미측정';
+                return f3(e.mean) + (e.low ? ` ⚠망설임 ${e.low}` : '') + (e.missing ? ` (결측 ${e.missing})` : ''); },
+    raw: x => (x.entail_prob && x.entail_prob.n) ? x.entail_prob.mean : null,
+    d: '검증관(eval.verifier)이 주장별 supported를 판정할 때의 확률 — 제약 디코딩 응답의 top_logprobs에서 뽑는다(P6-1). 🔑판정(bool)이 같아도 **확신한 판정과 망설인 판정은 다른 사실**이다: 0.35~0.65 구간(망설임)이 원문을 열어볼 1순위 대상이다. 낮은 확신은 결함 확정이 아니라 **리뷰 신호**. ⚠️절대값으로 읽지 말 것 — top-k 밖 잔여 질량만큼 과소평가되는 알려진 근사이고, 보정된 확률이 아니라 재정규화한 디코딩 확률이다. 축이 없는 배치·확률 미지원 백엔드는 "미측정"(0건이 아니다).' },
+  strict: { t: 'strict 충실도', src: 'f', val: x => f3(x.strict), raw: x => x.strict,
+    d: 'judge와 MiniCheck 양측 모두 supported로 판정한 주장 비율(보수 지표). 주 KPI(충실도)와 별도 축.' },
+  ctxp: { t: '검색 정밀도', src: 'f', val: x => pct(x.ctx_precision), raw: x => x.ctx_precision,
+    d: '검색된 청크 중 질문에 직접 관련된 비율(노이즈 지표). 낮음=무관 청크 다수 — 단 /ask는 권위 위계·rank 폴백에 의존하므로 게이트 성급 조정 금지(관측 우선). 드릴다운에 청크별 판정. ⚠️2026-07-16 이전 배치=L2 거리 공간 위 측정치(추세 단절점, v2.124.8 cosine 정정 — EVAL_GUIDE §7).' },
+  ctxs: { t: '근거 충분성', src: 'f', val: x => pct(x.ctx_sufficiency), raw: x => x.ctx_sufficiency,
+    d: '검색 근거만으로 완전 답변 가능 여부(yes 100/partial 50/no 0). 낮음=검색 누락(커버리지 문제). ⚠️2026-07-16 이전 배치=L2 거리 공간 위 측정치(추세 단절점, v2.124.8).' },
+  overall: { t: '품질 overall', src: 'q', val: x => s5(x.overall), raw: x => x.overall,
+    d: 'G-Eval 4차원(정확·도움·안전·자연성) 평균(1~5). judge=상주 qwen2.5:14b.' },
+  accuracy: { t: '정확성', src: 'q', val: x => s5(x.accuracy), raw: x => x.accuracy,
+    d: '사실적 정확성 — 의학/법령 지식과 근거 대비. 체크: 근거 인용·수치 일치·한정 조건 유지.' },
+  helpfulness: { t: '도움됨', src: 'q', val: x => s5(x.helpfulness), raw: x => x.helpfulness,
+    d: '질문 의도에 직접 답하고 실행 가능한 정보를 주는가. 체크: 직접 답변·실행 가능·완결성.' },
+  safety: { t: '안전성', src: 'q', val: x => s5(x.safety), raw: x => x.safety,
+    d: '자문보조 한계 고지·위험한 단정/처방 지시 없음·전문가 안내. 의료 안전 축.' },
+  fluency: { t: '자연성', src: 'q', val: x => s5(x.fluency), raw: x => x.fluency,
+    d: '한국어 자연성(번역투·경어 일관·깨진 문자). 개조식+서술문 혼용은 정상.' },
+  checks: { t: '체크리스트 통과', src: 'q', val: x => pct(x.checks_rate), raw: x => x.checks_rate,
+    d: '12 이진 항목(4차원×3) 통과율 — 실패 항목이 곧 개선 지점. judge 반복 불안정 항목(conditions_kept 등)은 judge 일관성 타일 참조.',
+    extra: d => (d.quality.checks_failed_top || []).length
+      ? '<h4>실패 항목 빈도(개선 지점)</h4><div>' + d.quality.checks_failed_top
+          .map(([i, n]) => `<span class="chip fail">${esc(i)}${n > 1 ? ' ×' + n : ''}</span>`).join('') + '</div>'
+      : '' },
+  korean: { t: '한국어 비율', src: 'q', val: x => pct(x.korean_ratio), raw: x => x.korean_ratio,
+    d: '답변 내 한글 비율(형식 지표). 법령·영문 용어 인용이 많으면 자연히 낮아질 수 있음.' },
+  judge: { t: 'judge 일관성', src: 'jc', val: x => pct(x.flip_rate != null ? 1 - x.flip_rate : null), raw: x => x.flip_rate != null ? 1 - x.flip_rate : null,
+    d: '같은 답변을 시드만 바꿔 반복 채점했을 때 체크 판정의 안정성(100−flip rate). flip이 잦은 항목=체크 정의 개선 대상. 품질 지수의 신뢰 구간 해석 근거(주 1회 측정).' },
+  qi: { t: '품질 종합 지수 (qi-1.0)', src: null,
+    d: '세밀 지표의 결정적 가중 합성(0~100·등급 A~D). 내부 관리지표(추세·회귀 감시용) — 대외 인증 수치 아님. 미측정 구성요소는 분모 제외(재정규화).' },
+};
+
+function openMetric(key) {
+  const m = METRIC_INFO[key];
+  if (!m || !LAST) return;
+  document.getElementById('modalOverlay').style.display = 'block';
+  const modal = document.getElementById('modal');
+  modal.style.display = 'block';
+  document.getElementById('mQ').textContent = m.t;
+  document.getElementById('mMeta').textContent = '최신 배치 ' +
+    ((LAST.faithfulness && LAST.faithfulness.ts) || '').slice(0, 19).replace('T', ' ');
+  let h = `<div class="box" style="max-height:none;white-space:normal;">${esc(m.d)}</div>`;
+
+  if (key === 'qi' && LAST.quality_index) {
+    const qi = LAST.quality_index;
+    h += `<h4>구성 분해 — ${qi.score.toFixed(1)}점 (${qi.grade}) · ${esc(qi.version)}</h4>`;
+    h += '<table><thead><tr><th>구성</th><th>정규화 값</th><th>가중</th><th>기여(점)</th></tr></thead><tbody>';
+    const KN = { faithfulness: '충실도', halluc_free: '무환각', strict: 'strict', overall: '품질 overall', checks: '체크리스트', korean: '한국어' };
+    const tw = Object.values(qi.weights_used).reduce((a, b) => a + b, 0);
+    Object.entries(qi.components).forEach(([k, v]) => {
+      const w = qi.weights_used[k] || 0;
+      h += `<tr><td>${KN[k] || esc(k)}</td><td>${f3(v)}</td><td>${(w * 100).toFixed(0)}%</td>
+        <td>${(v * w / tw * 100).toFixed(1)}</td></tr>`;
+    });
+    h += '</tbody></table>';
+  } else if (m.src) {
+    const fq = (LAST.faithfulness && LAST.faithfulness.questions) || [];
+    const qq = (LAST.quality && LAST.quality.questions) || [];
+    const jc = (LAST.judge_consistency && LAST.judge_consistency.questions) || [];
+    const rows = m.src === 'f' ? fq : m.src === 'q' ? qq : jc;
+    const qByQ = {}; qq.forEach(x => { qByQ[x.q] = x; });
+    const fByQ = {}; fq.forEach(x => { fByQ[x.q] = x; });
+    const sorted = rows.slice().sort((a, b) => {
+      const ra = m.raw(a), rb = m.raw(b);
+      return (ra == null ? 1 : ra) - (rb == null ? 1 : rb);       // 나쁜 값 우선
+    });
+    h += '<h4>질문별 분해 (나쁜 값 우선 — 행 클릭=질문 드릴다운)</h4>';
+    h += `<table><thead><tr><th>질문</th><th>${esc(m.t)}</th><th>비고</th></tr></thead><tbody>`;
+    sorted.forEach(x => {
+      const fid = (fByQ[x.q] || {}).id || (m.src === 'f' ? x.id : null);
+      const qid = (qByQ[x.q] || {}).id || (m.src === 'q' ? x.id : null);
+      const note = m.src === 'jc'
+        ? (x.flipped || []).join(', ')
+        : (m.src === 'q' ? (x.checks_failed || []).join(', ')
+                         : (x.mc_conflicts ? '교차 불일치 ' + x.mc_conflicts : ''));
+      const clickable = (fid || qid)
+        ? ` class="clickable" onclick="closeDetail();openDetail(${fid || 'null'}, ${qid || 'null'}, this.dataset.q)" data-q="${esc(x.q)}"` : '';
+      h += `<tr${clickable}><td class="qcol">${esc(x.q)}</td><td>${m.val(x)}</td>
+        <td class="qcol" style="max-width:280px;color:var(--warn)" title="${esc(note)}">${esc(note || '—')}</td></tr>`;
+    });
+    h += '</tbody></table>';
+    if (m.extra) h += m.extra(LAST) || '';
+  }
+  document.getElementById('mBody').innerHTML = h;
+}
+
+// ── 질문 드릴다운 — 상세 품질 데이터(답변·주장별 판정·차원 사유·체크 항목·이력) ──
+function closeDetail() {
+  document.getElementById('modal').style.display = 'none';
+  document.getElementById('modalOverlay').style.display = 'none';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetail(); });
+
+async function openDetail(fid, qid, question) {
+  const modal = document.getElementById('modal');
+  document.getElementById('modalOverlay').style.display = 'block';
+  modal.style.display = 'block';
+  document.getElementById('mQ').textContent = question;
+  document.getElementById('mMeta').textContent = '--';
+  document.getElementById('mBody').innerHTML = '<div class="empty">로딩…</div>';
+  const get = u => fetch(BASE + u).then(r => r.ok ? r.json() : null).catch(() => null);
+  const [fd, qd, hist] = await Promise.all([
+    fid ? get(`/api/eval/detail?kind=faithfulness&id=${fid}`) : null,
+    qid ? get(`/api/eval/detail?kind=quality&id=${qid}`) : null,
+    get(`/api/eval/history?question=${encodeURIComponent(question)}&limit=15`),
+  ]);
+  const fr = fd && fd.row, qr = qd && qd.row;
+  const meta = [];
+  if (fr) meta.push('배치 ' + (fr.ts || '').slice(0, 19).replace('T', ' '),
+                    svcLabel(fr.source), 'judge: ' + (fr.judge_model || '—'));
+  document.getElementById('mMeta').textContent = meta.join(' · ') || '--';
+  let h = '';
+
+  // 요약 지표
+  h += '<div class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(110px,1fr));">'
+    + tile('충실도', fr && fr.faithfulness != null ? fr.faithfulness.toFixed(3) : '--')
+    + tile('교차검증 일치', fr && fr.mc_agree != null ? (fr.mc_agree * 100).toFixed(0) + '%' : '--')
+    + tile('불일치', fr && fr.mc_conflicts != null ? fr.mc_conflicts + '건' : '--', fr && fr.mc_conflicts > 0)
+    + tile('품질 overall', qr && qr.overall != null ? qr.overall + '/5' : '--')
+    + tile('체크리스트', qr && qr.checks_rate != null ? (qr.checks_rate * 100).toFixed(0) + '%' : '--')
+    + '</div>';
+
+  // 답변 전문
+  const ans = (fr && fr.answer) || (qr && qr.answer);
+  h += '<h4>답변 전문</h4>';
+  h += ans ? `<div class="box">${esc(ans)}</div>`
+           : '<div class="empty">이 배치는 답변 미기록 (v2.121.0 이후 배치부터 기록)</div>';
+
+  // 주장별 판정 (judge vs MiniCheck)
+  h += '<h4>주장별 판정 — judge vs MiniCheck 교차검증</h4>';
+  const claims = fr && fr.detail && fr.detail.claims;
+  if (claims && claims.length) {
+    h += '<table><thead><tr><th>#</th><th>주장</th><th>judge</th><th>MiniCheck</th><th></th></tr></thead><tbody>';
+    claims.forEach((c, i) => {
+      const jv = c.verdict || '—';
+      const mv = c.minicheck == null ? '—' : (c.minicheck === 'supported' ? 'yes' : 'no');
+      const conflict = c.minicheck != null && ((c.verdict === 'supported') !== (c.minicheck === 'supported'));
+      h += `<tr><td>${i + 1}</td><td style="max-width:520px;">${esc(c.claim)}</td>
+        <td class="${jv === 'supported' ? 'v-ok' : jv === 'contradicted' ? 'v-bad' : 'v-dim'}">${esc(jv)}</td>
+        <td class="${mv === 'yes' ? 'v-ok' : mv === 'no' ? 'v-bad' : 'v-dim'}">${esc(mv)}</td>
+        <td>${conflict ? '<span class="v-bad">⚠ 불일치(리뷰)</span>' : ''}</td></tr>`;
+    });
+    h += '</tbody></table>';
+  } else {
+    h += '<div class="empty">주장 상세 미기록 (v2.121.0 이후 배치부터 기록)</div>';
+  }
+
+  // 차원별 점수·사유·체크 항목
+  h += '<h4>차원별 점수·사유·체크 항목</h4>';
+  const scores = qr && qr.detail && qr.detail.scores;
+  if (scores) {
+    const KDIM = { accuracy: '정확성', helpfulness: '도움됨', safety: '안전성', fluency: '자연성' };
+    h += '<table><thead><tr><th>차원</th><th>점수</th><th>사유</th><th>체크</th></tr></thead><tbody>';
+    Object.entries(scores).forEach(([dim, v]) => {
+      const chips = Object.entries(v.checks || {}).map(([cid, ok]) =>
+        `<span class="chip${ok ? '' : ' fail'}">${ok ? '✓' : '✗'} ${esc(cid)}</span>`).join('');
+      h += `<tr><td>${KDIM[dim] || esc(dim)}</td><td>${v.score}/5</td>
+        <td style="max-width:380px;">${esc(v.reason || '—')}</td><td>${chips || '—'}</td></tr>`;
+    });
+    h += '</tbody></table>';
+  } else {
+    h += '<div class="empty">차원 상세 미기록 (v2.121.0 이후 배치부터 기록)</div>';
+  }
+
+  // 검색 청크별 관련성 (retrieval 품질 드릴다운)
+  const rchunks = fr && fr.detail && fr.detail.retrieval_chunks;
+  if (rchunks && rchunks.length) {
+    const rel = rchunks.filter(c => c.relevant).length;
+    h += `<h4>검색 청크별 관련성 — 정밀도 ${rel}/${rchunks.length}`
+      + (fr.ctx_sufficiency != null ? ` · 근거 충분성 ${(fr.ctx_sufficiency * 100).toFixed(0)}%` : '') + '</h4>';
+    h += '<table><thead><tr><th>#</th><th>청크(앞 200자)</th><th>관련</th></tr></thead><tbody>';
+    rchunks.forEach((c, i) => {
+      h += `<tr><td>${i + 1}</td><td style="max-width:620px;">${esc(c.excerpt)}</td>
+        <td class="${c.relevant ? 'v-ok' : 'v-bad'}">${c.relevant ? '✓' : '✗ 무관'}</td></tr>`;
+    });
+    h += '</tbody></table>';
+  }
+
+  // 근거 발췌
+  const ev = fr && fr.detail && fr.detail.evidence_excerpt;
+  if (ev) {
+    h += '<h4>근거 발췌 (충실도 채점 기준)</h4>';
+    h += `<details><summary style="font-size:11px;color:var(--muted);cursor:pointer;">펼치기</summary><div class="box" style="margin-top:6px;">${esc(ev)}</div></details>`;
+  }
+
+  // 배치 이력(확대 검토)
+  h += '<h4>배치 이력 — 이 질문의 최근 추이</h4>';
+  const fh = (hist && hist.faithfulness) || [], qh = (hist && hist.quality) || [];
+  if (fh.length || qh.length) {
+    const qByTsDay = {};
+    qh.forEach(r => { qByTsDay[(r.ts || '').slice(0, 16)] = r; });
+    h += '<table><thead><tr><th>배치(UTC)</th><th>충실도</th><th>환각</th><th>불일치</th><th>overall</th><th>체크</th><th>체크 실패</th></tr></thead><tbody>';
+    fh.forEach(r => {
+      const qrow = qByTsDay[(r.ts || '').slice(0, 16)] || {};
+      h += `<tr><td>${esc((r.ts || '').slice(0, 19).replace('T', ' '))}</td>
+        <td>${r.faithfulness != null ? r.faithfulness.toFixed(3) : '—'}</td>
+        <td class="${r.hallucination ? 'v-bad' : ''}">${r.hallucination ? '⚠' : '—'}</td>
+        <td class="${r.mc_conflicts > 0 ? 'v-bad' : ''}">${r.mc_conflicts ?? '—'}</td>
+        <td>${qrow.overall != null ? qrow.overall + '/5' : '—'}</td>
+        <td>${qrow.checks_rate != null ? (qrow.checks_rate * 100).toFixed(0) + '%' : '—'}</td>
+        <td style="max-width:260px;" class="qcol" title="${esc(qrow.checks_failed || '')}">${esc(qrow.checks_failed || '—')}</td></tr>`;
+    });
+    h += '</tbody></table>';
+  } else {
+    h += '<div class="empty">이력 없음</div>';
+  }
+
+  document.getElementById('mBody').innerHTML = h;
+}
+
+refresh();
+setRefreshInterval();
+</script>
+</body>
+</html>

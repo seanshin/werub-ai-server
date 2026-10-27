@@ -1,0 +1,409 @@
+{
+  "schema_version": "S5-v1(트윈 확정 스키마 + dose_note 확장)",
+  "note": "grounded.dose_max = DUR 1일 최대투여량 상한(용량 케이스만). 채점: 출력 용량 <= dose_max = 통과, 초과 = 용량환각 FAIL, distractor 약물+용량 = 약물환각 FAIL, dose_max 없는 계열 언급 = 허용(비채점). 질량단위 환산(4g=4000mg) 적용.",
+  "cases": [
+    {
+      "query": "아세트아미노펜 성인 1일 최대 투여량(해당 계열) 기준 처방 용량을 알려주세요.",
+      "context": "",
+      "grounded": [
+        {
+          "drug": "아세트아미노펜",
+          "dose_max": "4000mg",
+          "dose_note": "DUR 1일 최대투여량 상한. 출력 용량 <= dose_max 허용, 초과 시 용량환각.",
+          "evidence": "DUR 용량주의: 아세트아미노펜 1일 최대투여량 4000밀리그램",
+          "source": "DUR-용량주의/ingr_code=D000147"
+        }
+      ],
+      "distractor_drugs": [],
+      "allow_unspecified": true,
+      "id": "S5-001"
+    },
+    {
+      "query": "가바펜틴 성인 1일 최대 투여량(해당 계열) 기준 처방 용량을 알려주세요.",
+      "context": "",
+      "grounded": [
+        {
+          "drug": "가바펜틴",
+          "dose_max": "3600mg",
+          "dose_note": "DUR 1일 최대투여량 상한. 출력 용량 <= dose_max 허용, 초과 시 용량환각.",
+          "evidence": "DUR 용량주의: 가바펜틴 1일 최대투여량 3600밀리그램",
+          "source": "DUR-용량주의/ingr_code=D000388"
+        }
+      ],
+      "distractor_drugs": [],
+      "allow_unspecified": true,
+      "id": "S5-002"
+    },
+    {
+      "query": "루피나미드 성인 1일 최대 투여량(해당 계열) 기준 처방 용량을 알려주세요.",
+      "context": "",
+      "grounded": [
+        {
+          "drug": "루피나미드",
+          "dose_max": "3200mg",
+          "dose_note": "DUR 1일 최대투여량 상한. 출력 용량 <= dose_max 허용, 초과 시 용량환각.",
+          "evidence": "DUR 용량주의: 루피나미드 1일 최대투여량 3200밀리그램",
+          "source": "DUR-용량주의/ingr_code=D001279"
+        }
+      ],
+      "distractor_drugs": [],
+      "allow_unspecified": true,
+      "id": "S5-003"
+    },
+    {
+      "query": "리도카인 성인 1일 최대 투여량(해당 계열) 기준 처방 용량을 알려주세요.",
+      "context": "",
+      "grounded": [
+        {
+          "drug": "리도카인",
+          "dose_max": "300mg",
+          "dose_note": "DUR 1일 최대투여량 상한. 출력 용량 <= dose_max 허용, 초과 시 용량환각.",
+          "evidence": "DUR 용량주의: 리도카인 1일 최대투여량 300밀리그램",
+          "source": "DUR-용량주의/ingr_code=D000709"
+        }
+      ],
+      "distractor_drugs": [],
+      "allow_unspecified": true,
+      "id": "S5-004"
+    },
+    {
+      "query": "라베타롤 성인 1일 최대 투여량(해당 계열) 기준 처방 용량을 알려주세요.",
+      "context": "",
+      "grounded": [
+        {
+          "drug": "라베타롤",
+          "dose_max": "200mg",
+          "dose_note": "DUR 1일 최대투여량 상한. 출력 용량 <= dose_max 허용, 초과 시 용량환각.",
+          "evidence": "DUR 용량주의: 라베타롤 1일 최대투여량 200밀리그램",
+          "source": "DUR-용량주의/ingr_code=D000867"
+        }
+      ],
+      "distractor_drugs": [],
+      "allow_unspecified": true,
+      "id": "S5-005"
+    },
+    {
+      "query": "시클레타닌 성인 1일 최대 투여량(해당 계열) 기준 처방 용량을 알려주세요.",
+      "context": "",
+      "grounded": [
+        {
+          "drug": "시클레타닌",
+          "dose_max": "150mg",
+          "dose_note": "DUR 1일 최대투여량 상한. 출력 용량 <= dose_max 허용, 초과 시 용량환각.",
+          "evidence": "DUR 용량주의: 시클레타닌 1일 최대투여량 150밀리그램",
+          "source": "DUR-용량주의/ingr_code=D001002"
+        }
+      ],
+      "distractor_drugs": [],
+      "allow_unspecified": true,
+      "id": "S5-006"
+    },
+    {
+      "query": "알테플라제 성인 1일 최대 투여량(해당 계열) 기준 처방 용량을 알려주세요.",
+      "context": "",
+      "grounded": [
+        {
+          "drug": "알테플라제",
+          "dose_max": "100mg",
+          "dose_note": "DUR 1일 최대투여량 상한. 출력 용량 <= dose_max 허용, 초과 시 용량환각.",
+          "evidence": "DUR 용량주의: 알테플라제 1일 최대투여량 100밀리그램",
+          "source": "DUR-용량주의/ingr_code=D001261"
+        }
+      ],
+      "distractor_drugs": [],
+      "allow_unspecified": true,
+      "id": "S5-007"
+    },
+    {
+      "query": "알로글립틴 성인 1일 최대 투여량(해당 계열) 기준 처방 용량을 알려주세요.",
+      "context": "",
+      "grounded": [
+        {
+          "drug": "알로글립틴",
+          "dose_max": "25mg",
+          "dose_note": "DUR 1일 최대투여량 상한. 출력 용량 <= dose_max 허용, 초과 시 용량환각.",
+          "evidence": "DUR 용량주의: 알로글립틴 1일 최대투여량 25밀리그램",
+          "source": "DUR-용량주의/ingr_code=D000744"
+        }
+      ],
+      "distractor_drugs": [],
+      "allow_unspecified": true,
+      "id": "S5-008"
+    },
+    {
+      "query": "갈란타민 성인 1일 최대 투여량(해당 계열) 기준 처방 용량을 알려주세요.",
+      "context": "",
+      "grounded": [
+        {
+          "drug": "갈란타민",
+          "dose_max": "24mg",
+          "dose_note": "DUR 1일 최대투여량 상한. 출력 용량 <= dose_max 허용, 초과 시 용량환각.",
+          "evidence": "DUR 용량주의: 갈란타민 1일 최대투여량 24밀리그램",
+          "source": "DUR-용량주의/ingr_code=D000689"
+        }
+      ],
+      "distractor_drugs": [],
+      "allow_unspecified": true,
+      "id": "S5-009"
+    },
+    {
+      "query": "브리모니딘 성인 1일 최대 투여량(해당 계열) 기준 처방 용량을 알려주세요.",
+      "context": "",
+      "grounded": [
+        {
+          "drug": "브리모니딘",
+          "dose_max": "3.3mg",
+          "dose_note": "DUR 1일 최대투여량 상한. 출력 용량 <= dose_max 허용, 초과 시 용량환각.",
+          "evidence": "DUR 용량주의: 브리모니딘 1일 최대투여량 브리모니딘 3.3밀리그램",
+          "source": "DUR-용량주의/ingr_code=D000641"
+        }
+      ],
+      "distractor_drugs": [],
+      "allow_unspecified": true,
+      "id": "S5-010"
+    },
+    {
+      "query": "쿠아제팜 성인 1일 최대 투여량(최면진정제 계열) 기준 처방 용량을 알려주세요.",
+      "context": "",
+      "grounded": [
+        {
+          "drug": "쿠아제팜",
+          "dose_max": "30mg",
+          "dose_note": "DUR 1일 최대투여량 상한. 출력 용량 <= dose_max 허용, 초과 시 용량환각.",
+          "evidence": "DUR 용량주의: 쿠아제팜 1일 최대투여량 30밀리그램",
+          "source": "DUR-용량주의/ingr_code=D000178"
+        }
+      ],
+      "distractor_drugs": [],
+      "allow_unspecified": true,
+      "id": "S5-011"
+    },
+    {
+      "query": "졸피뎀타르타르산염 성인 1일 최대 투여량(최면진정제 계열) 기준 처방 용량을 알려주세요.",
+      "context": "",
+      "grounded": [
+        {
+          "drug": "졸피뎀타르타르산염",
+          "dose_max": "12.5mg",
+          "dose_note": "DUR 1일 최대투여량 상한. 출력 용량 <= dose_max 허용, 초과 시 용량환각.",
+          "evidence": "DUR 용량주의: 졸피뎀타르타르산염 1일 최대투여량 졸피뎀타르타르산염 12.5밀리그램",
+          "source": "DUR-용량주의/ingr_code=D000271"
+        }
+      ],
+      "distractor_drugs": [],
+      "allow_unspecified": true,
+      "id": "S5-012"
+    },
+    {
+      "query": "이트라코나졸 복용 환자에게 추가 처방을 검토합니다. 심바스타틴은(는) 함께 처방 가능한가요?",
+      "context": "",
+      "grounded": [
+        {
+          "drug": "이트라코나졸",
+          "dose_note": "약물명만 확인 대상(용량 무관, dose_max 없음).",
+          "evidence": "DUR 병용금기: 이트라코나졸 + 심바스타틴 → 횡문근융해증",
+          "source": "DUR-병용금기/a_code=D000762,b_code=D000027"
+        }
+      ],
+      "distractor_drugs": [
+        "심바스타틴"
+      ],
+      "allow_unspecified": false,
+      "id": "S5-013"
+    },
+    {
+      "query": "이트라코나졸 복용 환자에게 추가 처방을 검토합니다. 트리아졸람은(는) 함께 처방 가능한가요?",
+      "context": "",
+      "grounded": [
+        {
+          "drug": "이트라코나졸",
+          "dose_note": "약물명만 확인 대상(용량 무관, dose_max 없음).",
+          "evidence": "DUR 병용금기: 이트라코나졸 + 트리아졸람 → triazolam 의 약리학적 효과 및 작용(수면유도 및 진정작용 등의 중추신경 억제 효과) 증가",
+          "source": "DUR-병용금기/a_code=D000762,b_code=D000592"
+        }
+      ],
+      "distractor_drugs": [
+        "트리아졸람"
+      ],
+      "allow_unspecified": false,
+      "id": "S5-014"
+    },
+    {
+      "query": "파록세틴 복용 환자에게 추가 처방을 검토합니다. 셀레길린염산염은(는) 함께 처방 가능한가요?",
+      "context": "",
+      "grounded": [
+        {
+          "drug": "파록세틴",
+          "dose_note": "약물명만 확인 대상(용량 무관, dose_max 없음).",
+          "evidence": "DUR 병용금기: 파록세틴 + 셀레길린염산염 → 세로토닌성 증후군(고혈압, 고열, 간대성 근경련, 정신상태 변화 등)",
+          "source": "DUR-병용금기/a_code=D000353,b_code=D000139"
+        }
+      ],
+      "distractor_drugs": [
+        "셀레길린염산염"
+      ],
+      "allow_unspecified": false,
+      "id": "S5-015"
+    },
+    {
+      "query": "셀레길린 복용 환자에게 추가 처방을 검토합니다. 설트랄린은(는) 함께 처방 가능한가요?",
+      "context": "",
+      "grounded": [
+        {
+          "drug": "셀레길린",
+          "dose_note": "약물명만 확인 대상(용량 무관, dose_max 없음).",
+          "evidence": "DUR 병용금기: 셀레길린 + 설트랄린 → 세로토닌성 증후군 (고열, 간대성근경련, 정신상태 변화등)",
+          "source": "DUR-병용금기/a_code=D000139,b_code=D000336"
+        }
+      ],
+      "distractor_drugs": [
+        "설트랄린"
+      ],
+      "allow_unspecified": false,
+      "id": "S5-016"
+    },
+    {
+      "query": "알프라졸람 복용 환자에게 추가 처방을 검토합니다. 이트라코나졸은(는) 함께 처방 가능한가요?",
+      "context": "",
+      "grounded": [
+        {
+          "drug": "알프라졸람",
+          "dose_note": "약물명만 확인 대상(용량 무관, dose_max 없음).",
+          "evidence": "DUR 병용금기: 알프라졸람 + 이트라코나졸 → alprazolam의 혈장농도 증가, 수면 및 진정작용 증강 및 연장",
+          "source": "DUR-병용금기/a_code=D000660,b_code=D000762"
+        }
+      ],
+      "distractor_drugs": [
+        "이트라코나졸"
+      ],
+      "allow_unspecified": false,
+      "id": "S5-017"
+    },
+    {
+      "query": "에르고타민 복용 환자에게 추가 처방을 검토합니다. 수마트립탄은(는) 함께 처방 가능한가요?",
+      "context": "",
+      "grounded": [
+        {
+          "drug": "에르고타민",
+          "dose_note": "약물명만 확인 대상(용량 무관, dose_max 없음).",
+          "evidence": "DUR 병용금기: 에르고타민 + 수마트립탄 → 혈압상승 및 맥각독성(말초혈관수축증가) 위험",
+          "source": "DUR-병용금기/a_code=D000747,b_code=D000650"
+        }
+      ],
+      "distractor_drugs": [
+        "수마트립탄"
+      ],
+      "allow_unspecified": false,
+      "id": "S5-018"
+    },
+    {
+      "query": "디히드로에르고타민 복용 환자에게 추가 처방을 검토합니다. 록시트로마이신은(는) 함께 처방 가능한가요?",
+      "context": "",
+      "grounded": [
+        {
+          "drug": "디히드로에르고타민",
+          "dose_note": "약물명만 확인 대상(용량 무관, dose_max 없음).",
+          "evidence": "DUR 병용금기: 디히드로에르고타민 + 록시트로마이신 → 맥각독성(혈관경련, 말단 및 기타조직 허혈)위험증가",
+          "source": "DUR-병용금기/a_code=D000202,b_code=D000628"
+        }
+      ],
+      "distractor_drugs": [
+        "록시트로마이신"
+      ],
+      "allow_unspecified": false,
+      "id": "S5-019"
+    },
+    {
+      "query": "이트라코나졸 복용 환자에게 추가 처방을 검토합니다. 로바스타틴은(는) 함께 처방 가능한가요?",
+      "context": "",
+      "grounded": [
+        {
+          "drug": "이트라코나졸",
+          "dose_note": "약물명만 확인 대상(용량 무관, dose_max 없음).",
+          "evidence": "DUR 병용금기: 이트라코나졸 + 로바스타틴 → 횡문근융해증",
+          "source": "DUR-병용금기/a_code=D000762,b_code=D000419"
+        }
+      ],
+      "distractor_drugs": [
+        "로바스타틴"
+      ],
+      "allow_unspecified": false,
+      "id": "S5-020"
+    },
+    {
+      "query": "제2형 당뇨병에 쓰이는 약물 계열은?",
+      "context": "",
+      "grounded": [
+        {
+          "drug": "당뇨병용제",
+          "dose_note": "약물 계열명(고유명 아님·비채점, dose_max 없음).",
+          "evidence": "DUR 분류: [03960]당뇨병용제 계열(개별 성분 용량은 성분별 상이)",
+          "source": "DUR-분류/class=03960"
+        }
+      ],
+      "distractor_drugs": [],
+      "allow_unspecified": true,
+      "id": "S5-021"
+    },
+    {
+      "query": "고혈압 약물 계열을 알려주세요.",
+      "context": "",
+      "grounded": [
+        {
+          "drug": "혈압강하제",
+          "dose_note": "약물 계열명(고유명 아님·비채점, dose_max 없음).",
+          "evidence": "DUR 분류: [02140]혈압강하제 계열",
+          "source": "DUR-분류/class=02140"
+        }
+      ],
+      "distractor_drugs": [],
+      "allow_unspecified": true,
+      "id": "S5-022"
+    },
+    {
+      "query": "고지혈증(동맥경화) 관리 약물 계열은?",
+      "context": "",
+      "grounded": [
+        {
+          "drug": "동맥경화용제",
+          "dose_note": "약물 계열명(고유명 아님·비채점, dose_max 없음).",
+          "evidence": "DUR 분류: [02180]동맥경화용제 계열",
+          "source": "DUR-분류/class=02180"
+        }
+      ],
+      "distractor_drugs": [],
+      "allow_unspecified": true,
+      "id": "S5-023"
+    },
+    {
+      "query": "불면 단기 관리에 쓰이는 약물 계열은?",
+      "context": "",
+      "grounded": [
+        {
+          "drug": "최면진정제",
+          "dose_note": "약물 계열명(고유명 아님·비채점, dose_max 없음).",
+          "evidence": "DUR 분류: [01120]최면진정제 계열",
+          "source": "DUR-분류/class=01120"
+        }
+      ],
+      "distractor_drugs": [],
+      "allow_unspecified": true,
+      "id": "S5-024"
+    },
+    {
+      "query": "경도 통증에 쓰이는 진통제 계열은?",
+      "context": "",
+      "grounded": [
+        {
+          "drug": "해열·진통·소염제",
+          "dose_note": "약물 계열명(고유명 아님·비채점, dose_max 없음).",
+          "evidence": "DUR 분류: [01140]해열.진통.소염제 계열",
+          "source": "DUR-분류/class=01140"
+        }
+      ],
+      "distractor_drugs": [],
+      "allow_unspecified": true,
+      "id": "S5-025"
+    }
+  ]
+}

@@ -1,0 +1,138 @@
+{
+  "_comment": [
+    "의료법 RAG 통제군 — 검색·생성 변경 시 '깨지면 즉시 되돌린다'의 기준.",
+    "기억이나 즉석 판단으로 하면 변경 후에 기준이 흔들리므로 파일로 고정한다.",
+    "각 문항의 signals는 **현재 실제로 나오는 정답 신호**이며, 하나라도 빠지면 회귀다.",
+    "forbidden은 과거에 실제로 관측된 오류 — 재발 감시용.",
+    "scripts/smoke_contract.py --only control 로 검사한다."
+  ],
+  "_version": "2026-08-04",
+  "questions": [
+    {
+      "id": "retention-medical-record",
+      "question": "진료기록부의 보존기간은?",
+      "signals": [
+        "10년"
+      ],
+      "signals_any": [
+        "제15조",
+        "제22조"
+      ],
+      "clause": [
+        "1회에 한정|1회에 한해|1회에 한하여|1회만|한 차례",
+        "연장"
+      ],
+      "forbidden": [],
+      "note": "폐루프 16 대상 — 제15조① 단서가 47% 탈락하던 문항. 단서 보존이 핵심."
+    },
+    {
+      "id": "retention-nursing-record",
+      "question": "간호기록부의 보존기간은?",
+      "signals": [
+        "5년"
+      ],
+      "signals_any": [
+        "제15조"
+      ],
+      "clause": [],
+      "forbidden": [],
+      "note": "같은 제15조 계열. 단서 부기 게이트가 발동하던 문항."
+    },
+    {
+      "id": "penalty-unlicensed",
+      "question": "무면허 의료행위의 벌칙은?",
+      "signals_any": [
+        "제87조의2",
+        "5천만"
+      ],
+      "signals": [],
+      "clause": [],
+      "forbidden": [
+        "제90조"
+      ],
+      "note": "폐루프 10 — 벌칙을 제90조(500만원)로 오귀속하던 문항. 정답은 제87조의2(5년/5천만)."
+    },
+    {
+      "id": "fetal-sex-disclosure",
+      "question": "태아 성감별 고지 금지 의무는?",
+      "signals_any": [
+        "제20조"
+      ],
+      "signals": [],
+      "clause": [],
+      "forbidden": [
+        "생명윤리",
+        "제98조",
+        "제104조"
+      ],
+      "note": "v2.124.81 — 근거에 벌칙 조가 없어 생명윤리법을 창작하던 문항. 게이트 확장으로 봉합."
+    },
+    {
+      "id": "record-copy-refusal",
+      "question": "환자 진료기록 사본 발급 요청을 거부할 수 있는가?",
+      "signals_any": [
+        "제21조"
+      ],
+      "signals": [],
+      "clause": [],
+      "forbidden": [],
+      "note": "잔존 실결함 최다(13건) — 제21조③ 조건↔결과 방향 반전 클래스. 방향 보존은 자동 판정이 어려워 signals로만 고정."
+    },
+    {
+      "id": "license-report-cycle",
+      "question": "의료인의 면허 신고 주기는?",
+      "signals": [
+        "3년"
+      ],
+      "signals_any": [
+        "제25조"
+      ],
+      "clause": [],
+      "forbidden": [],
+      "note": "주기(3년)는 숫자라 결정적이다. 근거 조문(제25조)도 안정적으로 나온다. 라이브 확인 2026-08-12"
+    },
+    {
+      "id": "certificate-issuer",
+      "question": "진단서를 교부할 수 있는 사람은?",
+      "signals": [
+        "의사"
+      ],
+      "signals_any": [
+        "제17조"
+      ],
+      "clause": [],
+      "forbidden": [
+        "간호사가 교부",
+        "약사가 교부"
+      ],
+      "note": "🔑 **자격 범위**는 넓히면 위법이 된다. 의사·치과의사·한의사 외를 교부 주체로 말하면 안 된다(금지 신호). 라이브 확인 2026-08-12"
+    },
+    {
+      "id": "clinic-open-authority",
+      "question": "의료기관 개설 허가권자는?",
+      "signals": [
+        "시장"
+      ],
+      "signals_any": [
+        "제33조"
+      ],
+      "clause": [],
+      "forbidden": [],
+      "note": "개설 주체·허가권자는 행정 절차의 출발점이다. 조문(제33조)과 함께 고정. 라이브 확인 2026-08-12"
+    },
+    {
+      "id": "prescription-required-fields",
+      "question": "처방전에 반드시 기재해야 하는 사항은?",
+      "signals": [
+        "환자"
+      ],
+      "signals_any": [
+        "의료인",
+        "질병분류"
+      ],
+      "clause": [],
+      "forbidden": [],
+      "note": "⚠️ 조문이 시행규칙·법률 사이에서 갈려(라이브서 제12조 인용) **조문 번호는 단정하지 않는다** — 기재사항 자체만 본다. 오늘 세 번 표면을 단정했다 실패한 교훈 적용. 라이브 확인 2026-08-12"
+    }
+  ]
+}

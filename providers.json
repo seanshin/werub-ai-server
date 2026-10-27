@@ -1,0 +1,50 @@
+{
+  "providers": {
+    "ollama": {
+      "type": "ollama",
+      "base_url": "http://127.0.0.1:11434",
+      "enabled": true,
+      "models": "auto"
+    },
+    "openai": {
+      "type": "openai",
+      "base_url": "https://api.openai.com/v1",
+      "api_key_env": "OPENAI_API_KEY",
+      "enabled": false,
+      "models": ["gpt-4o", "gpt-4o-mini", "o3-mini"],
+      "default_model": "gpt-4o-mini"
+    },
+    "anthropic": {
+      "type": "anthropic",
+      "base_url": "https://api.anthropic.com/v1",
+      "api_key_env": "ANTHROPIC_API_KEY",
+      "enabled": false,
+      "models": ["claude-sonnet-4-6", "claude-haiku-4-5"],
+      "default_model": "claude-sonnet-4-6"
+    },
+    "google": {
+      "type": "openai",
+      "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+      "api_key_env": "GOOGLE_API_KEY",
+      "enabled": false,
+      "models": ["gemini-2.5-flash", "gemini-2.5-pro"],
+      "default_model": "gemini-2.5-flash"
+    },
+    "groq": {
+      "type": "openai",
+      "base_url": "https://api.groq.com/openai/v1",
+      "api_key_env": "GROQ_API_KEY",
+      "enabled": false,
+      "models": ["llama-3.3-70b-versatile", "mixtral-8x7b-32768"],
+      "default_model": "llama-3.3-70b-versatile"
+    },
+    "openrouter": {
+      "type": "openai",
+      "base_url": "https://openrouter.ai/api/v1",
+      "api_key_env": "OPENROUTER_API_KEY",
+      "enabled": false,
+      "models": [],
+      "default_model": ""
+    }
+  }
+}

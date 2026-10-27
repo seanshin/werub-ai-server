@@ -1,0 +1,1054 @@
+{
+ "_registered": "docs/01-plan/features/heavy-creative-longform-eval.plan.md",
+ "_date": "2026-08-25",
+ "A_model": "qwen2.5:14b",
+ "B_model": "qwen3.6:35b-a3b",
+ "options": {
+  "temperature": 0.8,
+  "top_p": 0.9,
+  "seed": 42,
+  "num_predict": 1400,
+  "repeat_penalty": 1.1
+ },
+ "n": 40,
+ "quality_sign_test": {
+  "B_win": 12,
+  "A_win": 15,
+  "tie": 13,
+  "p": 0.7011
+ },
+ "noise_band_AA": {
+  "a2_win": 8,
+  "a1_win": 11,
+  "tie": 21,
+  "p": 0.6476,
+  "flip_rate": 0.475
+ },
+ "deterministic": {
+  "A": {
+   "signals_ok": 0.975,
+   "length_ok": 0.85,
+   "korean_ratio": null,
+   "repetition_score": 91.025,
+   "empty": 0,
+   "sec_mean": 6.12
+  },
+  "B": {
+   "signals_ok": 0.875,
+   "length_ok": 0.875,
+   "korean_ratio": null,
+   "repetition_score": 91.575,
+   "empty": 0,
+   "sec_mean": 18.79
+  }
+ },
+ "conditions": {
+  "quality_B_superior": false,
+  "deterministic_not_inferior": false,
+  "no_empty_no_leak": true
+ },
+ "verdict": "현상 유지",
+ "invalidated_by": [],
+ "rows": [
+  {
+   "id": "g1-cre-short-01",
+   "kind": "creative_short",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 856,
+    "korean_ratio": null,
+    "repetition_score": 52,
+    "empty": false,
+    "quality": 3.5,
+    "sec": 10.6
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 693,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 3.0,
+    "sec": 20.4,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-cre-short-02",
+   "kind": "creative_short",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 870,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 3.5,
+    "sec": 7.1
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 628,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 3.5,
+    "sec": 18.6,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-cre-short-03",
+   "kind": "creative_short",
+   "A": {
+    "signals_ok": true,
+    "length_ok": false,
+    "chars": 1054,
+    "korean_ratio": null,
+    "repetition_score": 95,
+    "empty": false,
+    "quality": 3.5,
+    "sec": 12.6
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 569,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 3.25,
+    "sec": 22.2,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-cre-short-04",
+   "kind": "creative_short",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 855,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 3.5,
+    "sec": 6.7
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 544,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 3.5,
+    "sec": 18.1,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-cre-short-05",
+   "kind": "creative_short",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 611,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 5.0,
+    "sec": 9.3
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 658,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 3.5,
+    "sec": 22.6,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-cre-short-06",
+   "kind": "creative_short",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 732,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 4.0,
+    "sec": 6.2
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 548,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 3.5,
+    "sec": 18.1,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-cre-short-07",
+   "kind": "creative_short",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 588,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 3.5,
+    "sec": 8.9
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 620,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 4.25,
+    "sec": 21.9,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-cre-short-08",
+   "kind": "creative_short",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 743,
+    "korean_ratio": null,
+    "repetition_score": 64,
+    "empty": false,
+    "quality": 3.5,
+    "sec": 6.0
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 512,
+    "korean_ratio": null,
+    "repetition_score": 91,
+    "empty": false,
+    "quality": 3.25,
+    "sec": 17.2,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-cre-cont-01",
+   "kind": "creative_continue",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 630,
+    "korean_ratio": null,
+    "repetition_score": 95,
+    "empty": false,
+    "quality": 3.5,
+    "sec": 9.3
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 681,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 3.5,
+    "sec": 23.0,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-cre-cont-02",
+   "kind": "creative_continue",
+   "A": {
+    "signals_ok": true,
+    "length_ok": false,
+    "chars": 990,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 3.5,
+    "sec": 7.5
+   },
+   "B": {
+    "signals_ok": false,
+    "length_ok": true,
+    "chars": 757,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 3.5,
+    "sec": 19.6,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-cre-cont-03",
+   "kind": "creative_continue",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 657,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 2.75,
+    "sec": 9.6
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 583,
+    "korean_ratio": null,
+    "repetition_score": 91,
+    "empty": false,
+    "quality": 2.75,
+    "sec": 21.7,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-cre-cont-04",
+   "kind": "creative_continue",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 827,
+    "korean_ratio": null,
+    "repetition_score": 95,
+    "empty": false,
+    "quality": 2.75,
+    "sec": 6.7
+   },
+   "B": {
+    "signals_ok": false,
+    "length_ok": true,
+    "chars": 569,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 3.5,
+    "sec": 17.7,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-cre-cont-05",
+   "kind": "creative_continue",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 606,
+    "korean_ratio": null,
+    "repetition_score": 95,
+    "empty": false,
+    "quality": 4.25,
+    "sec": 8.8
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 877,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 4.0,
+    "sec": 24.2,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-cre-cont-06",
+   "kind": "creative_continue",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 547,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 3.5,
+    "sec": 4.4
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 720,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 3.0,
+    "sec": 19.0,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-cre-cont-07",
+   "kind": "creative_continue",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 664,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 3.5,
+    "sec": 9.2
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 531,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 3.5,
+    "sec": 20.8,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-cre-cont-08",
+   "kind": "creative_continue",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 807,
+    "korean_ratio": null,
+    "repetition_score": 95,
+    "empty": false,
+    "quality": 3.5,
+    "sec": 6.9
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 750,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 3.5,
+    "sec": 19.7,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-cre-style-01",
+   "kind": "creative_style",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 225,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 5.0,
+    "sec": 5.9
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 153,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 5.0,
+    "sec": 17.6,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-cre-style-02",
+   "kind": "creative_style",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 279,
+    "korean_ratio": null,
+    "repetition_score": 82,
+    "empty": false,
+    "quality": 4.5,
+    "sec": 2.2
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 404,
+    "korean_ratio": null,
+    "repetition_score": 79,
+    "empty": false,
+    "quality": 4.75,
+    "sec": 15.5,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-cre-style-03",
+   "kind": "creative_style",
+   "A": {
+    "signals_ok": true,
+    "length_ok": false,
+    "chars": 95,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 3.0,
+    "sec": 4.9
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": false,
+    "chars": 144,
+    "korean_ratio": null,
+    "repetition_score": 91,
+    "empty": false,
+    "quality": 3.5,
+    "sec": 17.0,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-cre-style-04",
+   "kind": "creative_style",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 361,
+    "korean_ratio": null,
+    "repetition_score": 95,
+    "empty": false,
+    "quality": 4.25,
+    "sec": 2.9
+   },
+   "B": {
+    "signals_ok": false,
+    "length_ok": true,
+    "chars": 204,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 4.5,
+    "sec": 14.0,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-cre-style-05",
+   "kind": "creative_style",
+   "A": {
+    "signals_ok": true,
+    "length_ok": false,
+    "chars": 124,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 5.0,
+    "sec": 5.1
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 178,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 4.5,
+    "sec": 17.7,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-cre-style-06",
+   "kind": "creative_style",
+   "A": {
+    "signals_ok": true,
+    "length_ok": false,
+    "chars": 121,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 5.0,
+    "sec": 1.2
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": false,
+    "chars": 124,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 5.0,
+    "sec": 13.3,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-cre-style-07",
+   "kind": "creative_style",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 303,
+    "korean_ratio": null,
+    "repetition_score": 82,
+    "empty": false,
+    "quality": 3.5,
+    "sec": 6.6
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 388,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 3.75,
+    "sec": 19.8,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-cre-style-08",
+   "kind": "creative_style",
+   "A": {
+    "signals_ok": true,
+    "length_ok": false,
+    "chars": 96,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 4.25,
+    "sec": 1.1
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": false,
+    "chars": 95,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 4.25,
+    "sec": 13.2,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-long-sum-01",
+   "kind": "long_summary",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 321,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 5.0,
+    "sec": 6.8
+   },
+   "B": {
+    "signals_ok": false,
+    "length_ok": true,
+    "chars": 261,
+    "korean_ratio": null,
+    "repetition_score": 88,
+    "empty": false,
+    "quality": 4.5,
+    "sec": 18.4,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-long-sum-02",
+   "kind": "long_summary",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 177,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 4.0,
+    "sec": 1.5
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 55,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 4.0,
+    "sec": 12.8,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-long-sum-03",
+   "kind": "long_summary",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 735,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 4.0,
+    "sec": 7.7
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 698,
+    "korean_ratio": null,
+    "repetition_score": 73,
+    "empty": false,
+    "quality": 5.0,
+    "sec": 22.4,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-long-sum-04",
+   "kind": "long_summary",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 406,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 4.0,
+    "sec": 3.3
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 358,
+    "korean_ratio": null,
+    "repetition_score": 79,
+    "empty": false,
+    "quality": 4.0,
+    "sec": 15.5,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-long-sum-05",
+   "kind": "long_summary",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 89,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 4.75,
+    "sec": 4.9
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 346,
+    "korean_ratio": null,
+    "repetition_score": 91,
+    "empty": false,
+    "quality": 3.75,
+    "sec": 19.0,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-long-sum-06",
+   "kind": "long_summary",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 377,
+    "korean_ratio": null,
+    "repetition_score": 95,
+    "empty": false,
+    "quality": 4.0,
+    "sec": 3.1
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 223,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 4.5,
+    "sec": 14.3,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-long-str-01",
+   "kind": "long_structure",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 876,
+    "korean_ratio": null,
+    "repetition_score": 49,
+    "empty": false,
+    "quality": 3.75,
+    "sec": 10.2
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 802,
+    "korean_ratio": null,
+    "repetition_score": 76,
+    "empty": false,
+    "quality": 4.25,
+    "sec": 23.3,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-long-str-02",
+   "kind": "long_structure",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 897,
+    "korean_ratio": null,
+    "repetition_score": 86,
+    "empty": false,
+    "quality": 5.0,
+    "sec": 6.8
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": false,
+    "chars": 1474,
+    "korean_ratio": null,
+    "repetition_score": 55,
+    "empty": false,
+    "quality": 4.75,
+    "sec": 24.2,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-long-str-03",
+   "kind": "long_structure",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 587,
+    "korean_ratio": null,
+    "repetition_score": 77,
+    "empty": false,
+    "quality": 5.0,
+    "sec": 8.4
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": false,
+    "chars": 1319,
+    "korean_ratio": null,
+    "repetition_score": 43,
+    "empty": false,
+    "quality": 2.75,
+    "sec": 27.1,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-long-str-04",
+   "kind": "long_structure",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 632,
+    "korean_ratio": null,
+    "repetition_score": 62,
+    "empty": false,
+    "quality": 5.0,
+    "sec": 4.7
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 420,
+    "korean_ratio": null,
+    "repetition_score": 85,
+    "empty": false,
+    "quality": 5.0,
+    "sec": 15.6,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-long-str-05",
+   "kind": "long_structure",
+   "A": {
+    "signals_ok": false,
+    "length_ok": true,
+    "chars": 331,
+    "korean_ratio": null,
+    "repetition_score": 79,
+    "empty": false,
+    "quality": 4.25,
+    "sec": 6.4
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 307,
+    "korean_ratio": null,
+    "repetition_score": 85,
+    "empty": false,
+    "quality": 4.0,
+    "sec": 18.3,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-long-str-06",
+   "kind": "long_structure",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 447,
+    "korean_ratio": null,
+    "repetition_score": 81,
+    "empty": false,
+    "quality": 3.75,
+    "sec": 3.6
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 913,
+    "korean_ratio": null,
+    "repetition_score": 68,
+    "empty": false,
+    "quality": 4.75,
+    "sec": 19.9,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-long-multi-01",
+   "kind": "long_multistep",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 431,
+    "korean_ratio": null,
+    "repetition_score": 86,
+    "empty": false,
+    "quality": 4.25,
+    "sec": 7.5
+   },
+   "B": {
+    "signals_ok": false,
+    "length_ok": true,
+    "chars": 359,
+    "korean_ratio": null,
+    "repetition_score": 95,
+    "empty": false,
+    "quality": 4.0,
+    "sec": 19.3,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-long-multi-02",
+   "kind": "long_multistep",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 276,
+    "korean_ratio": null,
+    "repetition_score": 88,
+    "empty": false,
+    "quality": 4.25,
+    "sec": 2.2
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 363,
+    "korean_ratio": null,
+    "repetition_score": 85,
+    "empty": false,
+    "quality": 4.75,
+    "sec": 15.0,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-long-multi-03",
+   "kind": "long_multistep",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 360,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 4.5,
+    "sec": 6.7
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 556,
+    "korean_ratio": null,
+    "repetition_score": 100,
+    "empty": false,
+    "quality": 5.0,
+    "sec": 20.5,
+    "think": 0
+   }
+  },
+  {
+   "id": "g1-long-multi-04",
+   "kind": "long_multistep",
+   "A": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 161,
+    "korean_ratio": null,
+    "repetition_score": 88,
+    "empty": false,
+    "quality": 4.5,
+    "sec": 1.3
+   },
+   "B": {
+    "signals_ok": true,
+    "length_ok": true,
+    "chars": 116,
+    "korean_ratio": null,
+    "repetition_score": 88,
+    "empty": false,
+    "quality": 3.5,
+    "sec": 13.1,
+    "think": 0
+   }
+  }
+ ]
+}

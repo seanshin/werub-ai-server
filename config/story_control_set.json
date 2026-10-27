@@ -1,0 +1,71 @@
+{
+  "_comment": [
+    "스토리(story) 통제군 — 창작 도메인.",
+    "",
+    "🔑 **'좋은 이야기'는 재지 않는다.** 정답이 없다(기획서 §2-c).",
+    "   대신 **호출자가 준 지시가 실제로 반영되는가**를 본다 — 이건 결정적으로 판정된다.",
+    "   `pov`·`characters`·`world_context`는 파라미터이고, 무시되면 그건 계약 위반이다.",
+    "",
+    "⚠️ 이 레포가 반복해서 겪은 결함 클래스가 정확히 그것이다:",
+    "   **호출자가 준 값이 200 응답과 함께 조용히 버려지는 것**(v2.124.59에서 `/api/chat`이",
+    "   `options`·`think`·이미지를 통째로 무시했고, 로그에 흔적조차 없었다).",
+    "   창작 품질은 못 재도 **'지시가 도달했는가'는 잴 수 있다**.",
+    "",
+    "⚠️ LLM 생성이라 문장은 매번 다르다 — 그래서 **인물 이름처럼 고유하고 검증 가능한",
+    "   토큰**만 신호로 쓴다. 문체·분위기는 통제군에 넣지 않는다(흔들린다).",
+    "",
+    "scripts/smoke_contract.py --only story 로 검사한다."
+  ],
+  "_version": "2026-08-12",
+  "_endpoint": "/api/story/generate",
+  "_text_field": "story",
+  "questions": [
+    {
+      "id": "story-uses-given-characters",
+      "input": {
+        "prompt": "낡은 등대를 지키는 사람의 하루를 짧게 써 줘.",
+        "length": "short",
+        "characters": [{"name": "해무리", "role": "등대지기"}]
+      },
+      "signals_any": ["해무리"],
+      "forbidden": [],
+      "min_len": 100,
+      "min_korean_ratio": 0.5,
+      "provenance": "계약 검증(호출자 입력 반영). 라이브 확인 필요",
+      "note": "🔑 인물 이름은 **고유하고 검증 가능한 토큰**이라 창작 변동과 무관하게 잡힌다. 이름이 안 나오면 `characters`가 프롬프트에 도달하지 않은 것이다 — v2.124.59 클래스."
+    },
+    {
+      "id": "story-uses-world-context",
+      "input": {
+        "prompt": "주인공이 아침을 맞는 장면을 짧게 써 줘.",
+        "length": "short",
+        "world_context": "이 세계의 도시는 '윤슬탑'이라 불리는 거대한 탑 위에 지어져 있다."
+      },
+      "signals_any": ["윤슬탑"],
+      "forbidden": [],
+      "min_len": 100,
+      "min_korean_ratio": 0.5,
+      "provenance": "계약 검증(세계관 반영). 라이브 확인 필요",
+      "note": "고유명사를 심어 두고 그것이 살아 나오는지 본다. `world_context`가 무시되면 설정이 통째로 날아간 채 그럴듯한 글만 나온다."
+    },
+    {
+      "id": "story-korean-only",
+      "input": {"prompt": "비 오는 골목의 짧은 장면을 써 줘.", "length": "short"},
+      "signals_any": [],
+      "forbidden": [],
+      "min_len": 100,
+      "min_korean_ratio": 0.6,
+      "provenance": "영어 누출 방지(한국어 후처리 계약). 라이브 확인 필요",
+      "note": "창작 경로도 한국어 파이프라인을 탄다. 모델을 갈아끼웠을 때 **가장 먼저 나타날 회귀**가 영어 혼입이다."
+    },
+    {
+      "id": "story-no-prompt-echo",
+      "input": {"prompt": "짧은 우화를 하나 써 줘.", "length": "short"},
+      "signals_any": [],
+      "forbidden": ["[스토리 주제", "다음 조건에 맞게", "위 지시에 따라", "```"],
+      "min_len": 100,
+      "provenance": "🔴 입력 에코 재발 방지 — v2.124.x에서 meditron이 분석 대신 지시문을 되뱉어 **입력이 그대로 응답으로 나갔다**(계약 스모크가 존재하는 이유 중 하나). 라이브 확인 필요",
+      "note": "프롬프트 조각·마크다운 펜스가 본문에 섞이면 호출자는 그것을 작품으로 저장한다."
+    }
+  ]
+}

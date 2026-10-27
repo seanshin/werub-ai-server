@@ -1,0 +1,147 @@
+{
+  "_comment": [
+    "코딩(coding) 통제군 — **정답 검증이 가능한 도메인**.",
+    "",
+    "🔑 코드는 **파싱된다**. 창작·상담과 달리 '맞는가'를 기계가 판정할 수 있고,",
+    "   서버도 이미 `syntax_valid`로 그렇게 하고 있다(`ast.parse`).",
+    "",
+    "🔴 **이 통제군을 만들다 실결함을 찾았다**(2026-08-12): `/api/code/generate`가 응답 `code`에",
+    "   LLM 원문(```펜스 + 뒤따르는 설명문)을 그대로 실었다. 문서 계약은 **순수 코드**인데다",
+    "   (`docs/CODING_API_GUIDE.md` 응답 예시), `syntax_valid`·`security_scan`은 **펜스를 벗긴**",
+    "   블록을 검사한 값이었다 — **호출자가 받은 문자열과 서버가 검사한 문자열이 달랐다**.",
+    "   ⇒ 반환 값을 검사 대상과 일치시키고 원문은 `raw`로 보존(v2.125.1).",
+    "   그래서 지금은 **`code`를 그대로 파싱**한다(펜스 제거 불필요).",
+    "",
+    "⚠️ 시간이 오래 걸리는 경로가 있다(test 35s·debug 25s·review 21s). 통제군은",
+    "   **빈 응답·형태 붕괴**만 보고 품질은 재지 않는다.",
+    "",
+    "scripts/smoke_contract.py --only coding 으로 검사한다."
+  ],
+  "_version": "2026-08-12",
+  "questions": [
+    {
+      "id": "generate-python-parses",
+      "endpoint": "/api/code/generate",
+      "input": {
+        "prompt": "두 정수의 최대공약수를 구하는 함수",
+        "language": "python"
+      },
+      "expect": {
+        "syntax_valid": true
+      },
+      "text_field": "code",
+      "signals_any": [
+        "def "
+      ],
+      "min_len": 50,
+      "provenance": "라이브 확인 2026-08-12 — syntax_valid=true·펜스 제거 시 파싱 OK",
+      "note": "🔑 **파싱 가능성이 이 도메인의 정답**이다. 생성 모델이 바뀌어도 코드가 코드여야 한다. **`code`를 그대로 파싱**한다 — 펜스가 섞여 나오면 그 자체가 회귀다(위 주석 참조).",
+      "python_parses": true,
+      "forbidden": [
+        "```"
+      ]
+    },
+    {
+      "id": "generate-declares-language",
+      "endpoint": "/api/code/generate",
+      "input": {
+        "prompt": "문자열을 뒤집는 함수",
+        "language": "python"
+      },
+      "expect": {
+        "language": "python",
+        "syntax_valid": true
+      },
+      "text_field": "code",
+      "min_len": 30,
+      "provenance": "라이브 확인 2026-08-12",
+      "note": "요청한 언어가 응답 메타에 반영되는지 — 호출자가 그 값으로 파일 확장자를 정한다.",
+      "python_parses": true,
+      "forbidden": [
+        "```"
+      ]
+    },
+    {
+      "id": "review-returns-findings",
+      "endpoint": "/api/code/review",
+      "input": {
+        "code": "def f(x):\n  return x/0",
+        "language": "python"
+      },
+      "expect": {},
+      "text_field": "review",
+      "signals_any": [
+        "Divis",
+        "division",
+        "0으로",
+        "ZeroDivision",
+        "나누"
+      ],
+      "min_len": 40,
+      "provenance": "라이브 확인 2026-08-12 — 0으로 나누기를 critical로 지적",
+      "note": "명백한 결함(0으로 나누기)을 못 짚으면 리뷰가 무의미하다. 표현은 매번 다르므로 **택일**로 둔다."
+    },
+    {
+      "id": "explain-is-korean",
+      "endpoint": "/api/code/explain",
+      "input": {
+        "code": "def f(x):\n    return x * 2",
+        "language": "python"
+      },
+      "expect": {},
+      "text_field": "explanation",
+      "min_len": 60,
+      "min_korean_ratio": 0.3,
+      "provenance": "라이브 확인 2026-08-12 — 한국어 설명 반환",
+      "note": "설명은 한국어여야 한다(코드·식별자가 섞이므로 하한은 낮게). 영어로 돌아서면 이 파이프라인의 한국어 계약이 깨진 것이다."
+    },
+    {
+      "id": "test-generates-test-code",
+      "endpoint": "/api/code/test",
+      "input": {
+        "code": "def add(a, b):\n    return a + b",
+        "language": "python"
+      },
+      "expect": {},
+      "text_field": "tests",
+      "signals_any": [
+        "def test",
+        "assert",
+        "pytest"
+      ],
+      "min_len": 60,
+      "provenance": "라이브 확인 2026-08-12 — pytest 기반 테스트 반환(framework 필드 동반)",
+      "note": "테스트 생성인데 테스트 형태가 아니면(설명만 반환) 호출자가 쓸 수 없다. v2.124.x meditron 무동작과 같은 클래스."
+    },
+    {
+      "id": "debug-returns-analysis",
+      "endpoint": "/api/code/debug",
+      "input": {
+        "code": "def f(x):\n  return x/0",
+        "error": "ZeroDivisionError",
+        "language": "python"
+      },
+      "expect": {},
+      "text_field": "analysis",
+      "signals_any": [
+        "ZeroDivision",
+        "0",
+        "division",
+        "나누"
+      ],
+      "min_len": 60,
+      "provenance": "라이브 확인 2026-08-12",
+      "note": "입력으로 준 에러를 분석이 언급조차 안 하면 에러가 전달되지 않은 것이다(호출자 값이 버려지는 v2.124.59 클래스)."
+    },
+    {
+      "id": "generate-rejects-empty-prompt",
+      "endpoint": "/api/code/generate",
+      "input": {
+        "language": "python"
+      },
+      "expect_status": 400,
+      "provenance": "계약 — 필수 파라미터 검증. 라이브 확인 2026-08-12(`prompt is required`)",
+      "note": "🔑 **400을 정확히 내는 것도 계약이다.** 오늘 writing에서 파라미터를 잘못 줬을 때 서버가 400+필드명으로 답해 준 덕에 내 실수를 즉시 알았다 — 200에 빈 응답이었으면 실결함으로 오인했을 것이다."
+    }
+  ]
+}

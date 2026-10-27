@@ -1,0 +1,236 @@
+{
+  "_comment": [
+    "의료 정본 데이터 통제군 — DUR·코드 해석·e약은요.",
+    "",
+    "🔑 **이 도메인은 LLM이 개입하지 않는다.** 식약처·심평원 정본 DB 조회라 결과가",
+    "   결정적이고, 그래서 **가장 견고한 게이트**가 된다(모델을 갈아끼워도 불변).",
+    "   상담·글쓰기 통제군이 '흔들리지 않게' 설계를 고민해야 했던 것과 대조된다.",
+    "",
+    "⚠️ **정본은 갱신된다.** 약가·대체조제 월별 · 치료재료·DUR 7일 · 의료법 코퍼스 일별.",
+    "   그래서 여기 신호는 **개별 품목명·금액이 아니라 구조와 분류**로 잡는다 —",
+    "   품목 하나가 목록에서 빠져도 게이트가 거짓 실패하지 않게(기획서 §2-d).",
+    "   유일한 예외는 `dur-known-interaction`(파록세틴+셀레길린)인데, 이건",
+    "   v2.118.1에서 **일반명 검출 결함을 잡아낸** 그 조합이라 값이 특별하다.",
+    "",
+    "🔴 **환자 안전 직결**: DUR 미검출(위음성)은 처방 사고로 이어진다.",
+    "   과검출(위양성)도 경보 피로를 만들어 결국 무시당한다 — 양방향 다 건다.",
+    "",
+    "scripts/smoke_contract.py --only medical-data 로 검사한다."
+  ],
+  "_version": "2026-08-12",
+  "questions": [
+    {
+      "id": "dur-pregnancy-contraindication",
+      "endpoint": "/api/medical/dur/check",
+      "input": {
+        "drugs": [
+          "이소트레티노인"
+        ],
+        "pregnant": true
+      },
+      "expect": {
+        "has_warning": true
+      },
+      "nonempty_lists": [
+        "pregnancy_warnings"
+      ],
+      "provenance": "v2.97.0 환자 컨텍스트 인지 DUR. 라이브 확인 2026-08-12(has_warning=true·pregnancy_warnings≥1)",
+      "note": "🔴 이소트레티노인은 대표적 임부금기(기형유발)다. 임부 컨텍스트를 넘겼는데 경고가 없으면 **환자 컨텍스트 배선이 끊긴 것**이다."
+    },
+    {
+      "id": "dur-elderly-warning",
+      "endpoint": "/api/medical/dur/check",
+      "input": {
+        "drugs": [
+          "디아제팜"
+        ],
+        "age": 70
+      },
+      "expect": {
+        "has_warning": true
+      },
+      "nonempty_lists": [
+        "elderly_warnings"
+      ],
+      "provenance": "라이브 확인 2026-08-12(age_warnings=1·elderly_warnings=1)",
+      "note": "≥65 노인주의 경로. 임부와 **다른 갈래**라 따로 건다 — 한 갈래만 걸면 나머지가 끊겨도 모른다."
+    },
+    {
+      "id": "dur-known-interaction",
+      "endpoint": "/api/medical/dur/check",
+      "input": {
+        "drugs": [
+          "파록세틴",
+          "셀레길린"
+        ]
+      },
+      "expect": {
+        "has_contraindication": true
+      },
+      "nonempty_lists": [
+        "contraindications"
+      ],
+      "max_sec": 1.0,
+      "provenance": "🔴 v2.118.1 실결함 — 식약처 API가 a측 성분명을 빈값으로 주고 b측은 salt 정식명이라 **일반명('셀레길린')으로는 검출 실패**했다. salt 접미 제거로 봉합. 라이브 확인 2026-08-12",
+      "note": "🔑 **일반명으로 물어도 잡혀야 한다**. 이 조합이 그 결함을 드러낸 실물이다. `max_sec`는 LLM이 끼어들지 않았음을 확인한다(정본 조회는 수십 ms)."
+    },
+    {
+      "id": "dur-no-false-positive",
+      "endpoint": "/api/medical/dur/check",
+      "input": {
+        "drugs": [
+          "타이레놀"
+        ]
+      },
+      "expect": {
+        "has_warning": false,
+        "has_contraindication": false
+      },
+      "empty_lists": [
+        "contraindications",
+        "pregnancy_warnings",
+        "elderly_warnings"
+      ],
+      "provenance": "과검출 방지. 라이브 확인 2026-08-12(전 항목 0)",
+      "note": "🔑 **완화 방향의 통제군.** 검출을 넓히다 보면 단일 상용약에도 경고가 붙고, 그러면 처방의가 DUR 경고를 무시하기 시작한다 — 위음성만큼 위험하다."
+    },
+    {
+      "id": "dur-eight-types-declared",
+      "endpoint": "/api/medical/dur/check",
+      "input": {
+        "drugs": [
+          "타이레놀"
+        ]
+      },
+      "expect": {},
+      "list_len": {
+        "dur_types_checked": 8
+      },
+      "provenance": "v2.99.0 DUR 8유형 완성. 라이브 확인 2026-08-12",
+      "note": "8유형(병용·임부·연령·노인·용량·기간·효능군중복·서방정분할) 중 하나라도 배선이 빠지면 **조용히 검사 범위가 줄어든다**. 개수로 잡는다."
+    },
+    {
+      "id": "fee-code-interpretation",
+      "endpoint": "/api/notice/fee-codes/645302132",
+      "method": "GET",
+      "expect": {
+        "resolved": true
+      },
+      "contains_any": {
+        "notice_type": [
+          "DRUG_MATERIAL",
+          "REVIEW_CRITERIA"
+        ]
+      },
+      "provenance": "v2.87.1 청구코드→notice_type 자동 해석. 라이브 확인 2026-08-12",
+      "note": "ERP 사전심사가 이 해석에 기댄다 — 코드가 안 풀리면 삭감 위험 평가가 통째로 보류된다."
+    },
+    {
+      "id": "drug-info-authoritative",
+      "endpoint": "/api/medical/drug-info",
+      "input": {
+        "name": "타이레놀"
+      },
+      "expect": {
+        "found": true
+      },
+      "signals_in": {
+        "field": "matches.0.efficacy",
+        "any": [
+          "발열",
+          "통증",
+          "두통"
+        ]
+      },
+      "provenance": "v2.98.0 e약은요 정본. 라이브 확인 2026-08-12(match_count=5·효능 문구 실재)",
+      "note": "환자용 정보는 **LLM이 짓지 않고 정본에서 온다**. 이 경로가 끊기면 그 자리를 환각이 메운다."
+    },
+    {
+      "id": "disclaimer-present",
+      "endpoint": "/api/medical/dur/check",
+      "input": {
+        "drugs": [
+          "타이레놀"
+        ]
+      },
+      "expect": {},
+      "signals_in": {
+        "field": "disclaimer",
+        "any": [
+          "식약처",
+          "처방의",
+          "약사"
+        ]
+      },
+      "provenance": "규제·안전 계약. 라이브 확인 2026-08-12",
+      "note": "🔴 '자문 보조이고 실시간 DUR이 정본'이라는 고지는 **규제 트랙 약속**이다. 조용히 사라지면 안 된다."
+    },
+    {
+      "id": "corpus-size-fee-codes",
+      "endpoint": "/api/notice/fee-codes/stats",
+      "method": "GET",
+      "expect": {},
+      "min_numbers": {
+        "total": 100000
+      },
+      "min_nested": {
+        "by_category.MATERIAL": 80000,
+        "by_category.DRUG": 20000,
+        "by_category.TARIFF": 7000
+      },
+      "provenance": "🔴 v2.124.92 실결함 — 치료재료가 91,211→**59,000**(-35%)으로 조용히 사라졌고 `status=ok`로 기록됐다(빈 페이지를 '끝'으로 읽음). 라이브 확인 2026-08-12(MATERIAL 91,377·DRUG 21,998·TARIFF 7,138)",
+      "note": "🔑 **정본 데이터 손실은 조용하다.** 동기화가 성공으로 기록되고 화면도 정상이라, 규모를 재는 것 말고는 알 방법이 없다. 하한은 실측의 80~90% 수준으로 둔다 — 정상 갱신에는 걸리지 않고 **대량 손실만** 잡는다."
+    },
+    {
+      "id": "corpus-size-drug-master",
+      "endpoint": "/api/notice/drug-master/stats",
+      "method": "GET",
+      "expect": {},
+      "min_numbers": {
+        "total_codes": 250000,
+        "distinct_product_codes": 18000
+      },
+      "provenance": "의약품 코드 크로스워크(v2.95.0). 라이브 확인 2026-08-12(305,522·22,306)",
+      "note": "바코드↔제품코드↔성분코드 해석의 근간이다. 무너지면 HIS 스캔 코드가 통째로 안 풀린다."
+    },
+    {
+      "id": "corpus-size-dur",
+      "endpoint": "/api/medical/dur/stats",
+      "method": "GET",
+      "expect": {},
+      "min_numbers": {
+        "interactions": 1000,
+        "products": 3000
+      },
+      "list_len": {
+        "dur_types": 8
+      },
+      "provenance": "v2.99.0 DUR 8유형. 라이브 확인 2026-08-12(병용금기 1,325·품목 3,791)",
+      "note": "🔴 병용금기 규칙 수가 줄면 **잡히던 금기가 안 잡힌다** — 화면엔 아무 표시도 없다."
+    },
+    {
+      "id": "corpus-size-drug-info",
+      "endpoint": "/api/medical/drug-info/stats",
+      "method": "GET",
+      "expect": {},
+      "min_numbers": {
+        "total": 4000,
+        "with_side_effect": 4000
+      },
+      "provenance": "e약은요 정본(v2.98.0). 라이브 확인 2026-08-12(4,758·4,525)",
+      "note": "환자용 정보의 출처다. 비면 그 자리를 LLM 환각이 메운다."
+    },
+    {
+      "id": "drug-substitution-lookup",
+      "endpoint": "/api/notice/drug-substitution/stats",
+      "method": "GET",
+      "expect": {},
+      "min_numbers": {
+        "total": 8000,
+        "eligible": 8000
+      },
+      "provenance": "저가약 대체조제(v2.92.0·월별 갱신). 라이브 확인 2026-08-12(11,034·10,472)",
+      "note": "⚠️ **월별 전량 교체**되는 스냅샷이라 품목명을 단정하지 않고 **규모**만 본다(기획서 §2-d)."
+    }
+  ]
+}

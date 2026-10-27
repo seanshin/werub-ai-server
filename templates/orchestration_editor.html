@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orchestration Editor</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0b0f;--surface:#12141c;--card:#161822;--border:#1e2130;
+  --text:#e4e4e7;--muted:#71717a;--accent:#6366f1;
+  --green:#22c55e;--red:#ef4444;--yellow:#eab308;--blue:#3b82f6;--cyan:#06b6d4;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.header{padding:12px 20px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.header h1{font-size:16px;font-weight:700}
+.header a{color:var(--accent);font-size:11px;text-decoration:none}
+.header .meta{font-size:11px;color:var(--muted)}
+.status-badge{padding:3px 8px;border-radius:4px;font-size:10px;font-weight:700}
+.status-online{background:rgba(34,197,94,.15);color:var(--green)}
+.status-offline{background:rgba(239,68,68,.15);color:var(--red)}
+.tabs{display:flex;gap:0;background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;overflow-x:auto}
+.tab{padding:10px 16px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;white-space:nowrap}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.panel{display:none;padding:16px 20px;max-width:1400px;margin:0 auto}
+.panel.active{display:block}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px}
+.card:hover{border-color:var(--accent);cursor:pointer}
+.card.no-hover:hover{border-color:var(--border);cursor:default}
+.card h3{font-size:13px;font-weight:700;margin-bottom:4px}
+.card .desc{font-size:11px;color:var(--muted);margin-bottom:8px}
+.cat-section{margin-bottom:20px}
+.cat-header{display:flex;align-items:center;gap:8px;padding:6px 12px;margin-bottom:10px;font-size:14px;font-weight:700;color:var(--text)}
+.cat-count{font-size:11px;font-weight:500;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1px 8px}
+.cat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:1200px){.cat-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:900px){.cat-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.cat-grid{grid-template-columns:1fr}}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-bottom:16px}
+.badge{padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700;display:inline-block}
+.badge-medical{background:rgba(34,197,94,.15);color:var(--green)}
+.badge-legal{background:rgba(234,179,8,.15);color:var(--yellow)}
+.badge-custom{background:rgba(99,102,241,.15);color:var(--accent)}
+.badge-general{background:rgba(59,130,246,.15);color:var(--blue)}
+.badge-blog{background:rgba(6,182,212,.15);color:var(--cyan)}
+.badge-cafe{background:rgba(234,179,8,.15);color:var(--yellow)}
+.badge-ok{background:rgba(34,197,94,.15);color:var(--green)}
+.badge-err{background:rgba(239,68,68,.15);color:var(--red)}
+.badge-run{background:rgba(59,130,246,.15);color:var(--blue)}
+.badge-pending{background:rgba(234,179,8,.15);color:var(--yellow)}
+.btn{padding:6px 14px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;transition:border-color .2s}
+.btn:hover{border-color:var(--accent)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-primary:hover{background:#5558e6}
+.btn-danger{border-color:var(--red);color:var(--red)}
+.btn-danger:hover{background:rgba(239,68,68,.1)}
+.btn-green{border-color:var(--green);color:var(--green)}
+.btn-sm{padding:3px 8px;font-size:10px}
+.form-group{margin-bottom:12px}
+.form-group label{display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:8px 12px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:6px;font-size:12px;font-family:inherit}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--accent)}
+.form-group textarea{resize:vertical;min-height:80px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:700px){.form-row{grid-template-columns:1fr}}
+.section{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px}
+.section h3{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+table.data{width:100%;border-collapse:collapse;font-size:11px}
+table.data th{text-align:left;padding:6px 8px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase}
+table.data td{padding:5px 8px;border-bottom:1px solid rgba(30,33,48,.3)}
+table.data tr:hover{background:rgba(99,102,241,.03)}
+table.data tr{cursor:pointer}
+.step-item{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.step-item .step-num{font-size:10px;font-weight:800;color:var(--accent);min-width:24px;text-align:center}
+.step-item input,.step-item select{padding:5px 8px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:4px;font-size:11px;font-family:inherit}
+.step-item input:focus,.step-item select:focus{outline:none;border-color:var(--accent)}
+.step-item .step-id{width:100px}
+.step-item .step-action{flex:1;min-width:180px}
+.step-item .step-deps{width:140px}
+.step-item label.opt{font-size:10px;color:var(--muted);display:flex;align-items:center;gap:4px;cursor:pointer}
+.tag-container{display:flex;flex-wrap:wrap;gap:4px;padding:6px 8px;border:1px solid var(--border);background:var(--bg);border-radius:6px;min-height:36px;cursor:text}
+.tag-container:focus-within{border-color:var(--accent)}
+.tag{background:var(--accent);color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;display:flex;align-items:center;gap:4px}
+.tag .tag-x{cursor:pointer;font-size:12px;opacity:.7}
+.tag .tag-x:hover{opacity:1}
+.tag-container input{border:none;background:none;color:var(--text);font-size:11px;outline:none;min-width:80px;flex:1;padding:2px}
+.log-box{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;max-height:400px;overflow-y:auto;font-family:'JetBrains Mono',Menlo,monospace;font-size:10px;line-height:1.8}
+.sse-line{border-bottom:1px solid rgba(30,33,48,.2);padding:2px 0}
+.sse-line .ts{color:var(--muted);margin-right:8px}
+.sse-line .ev{color:var(--cyan);font-weight:600;margin-right:6px}
+.mono{font-family:'JetBrains Mono',Menlo,monospace;font-size:11px}
+.result-box{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;margin-top:12px;white-space:pre-wrap;font-family:'JetBrains Mono',Menlo,monospace;font-size:11px;max-height:500px;overflow-y:auto}
+.empty{text-align:center;padding:40px 20px;color:var(--muted);font-size:12px}
+.toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+
+/* Toast */
+.toast{position:fixed;bottom:20px;right:20px;padding:10px 18px;border-radius:8px;font-size:12px;font-weight:600;background:var(--green);color:#fff;opacity:0;transform:translateY(10px);transition:all .3s;pointer-events:none;z-index:9999;max-width:400px}
+.toast.show{opacity:1;transform:translateY(0);pointer-events:auto}
+.toast.error{background:var(--red)}
+
+/* Modal overlay */
+.modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:1000;justify-content:center;align-items:center}
+.modal-overlay.show{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:600px;width:90%;max-height:80vh;overflow-y:auto}
+.modal h3{margin-bottom:12px;font-size:14px}
+.modal .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Orchestration Editor</h1>
+    <div class="meta">Workflow Management Console</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <span id="statusBadge" class="status-badge status-offline">checking...</span>
+    <a href="/">&#8592; Admin</a>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('workflows')">Workflows</button>
+  <button class="tab" onclick="switchTab('editor')">Editor</button>
+  <button class="tab" onclick="switchTab('history')">History</button>
+  <button class="tab" onclick="switchTab('run')">Run Workflow</button>
+</div>
+
+<!-- ═══ WORKFLOWS ═══ -->
+<div id="panel-workflows" class="panel active">
+  <div class="toolbar">
+    <div style="font-size:12px;color:var(--muted)" id="wfCount">-- workflows</div>
+    <button class="btn btn-primary" onclick="newWorkflow()">+ 새 워크플로 등록</button>
+  </div>
+  <div id="wfGrid">
+    <div class="empty">Loading...</div>
+  </div>
+</div>
+
+<!-- ═══ EDITOR ═══ -->
+<div id="panel-editor" class="panel">
+  <div class="toolbar">
+    <h2 style="font-size:14px" id="editorTitle">새 워크플로 등록</h2>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-danger" id="btnDelete" style="display:none" onclick="deleteWorkflow()">삭제</button>
+      <button class="btn" onclick="switchTab('workflows')">취소</button>
+      <button class="btn btn-primary" id="btnSave" onclick="saveWorkflow()">저장</button>
+    </div>
+  </div>
+  <div class="section no-hover">
+    <h3>기본 정보</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Name (ID)</label>
+        <input type="text" id="wfName" placeholder="my_workflow (영문소문자+숫자+밑줄)">
+      </div>
+      <div class="form-group">
+        <label>표시 이름</label>
+        <input type="text" id="wfDisplayName" placeholder="내 워크플로">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>도메인</label>
+        <select id="wfDomain">
+          <option value="general">General</option>
+          <option value="medical">Medical</option>
+          <option value="legal">Legal</option>
+          <option value="blog">Blog</option>
+          <option value="cafe">Cafe</option>
+          <option value="custom" selected>Custom</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>설명</label>
+        <input type="text" id="wfDescription" placeholder="워크플로 설명">
+      </div>
+    </div>
+  </div>
+
+  <div class="section no-hover">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <h3 style="margin-bottom:0">Steps</h3>
+      <button class="btn btn-sm" onclick="addStep()">+ Step 추가</button>
+    </div>
+    <div id="stepsContainer">
+      <div class="empty">아직 Step이 없습니다. "Step 추가" 버튼을 클릭하세요.</div>
+    </div>
+  </div>
+
+  <div class="section no-hover">
+    <h3>트리거 키워드</h3>
+    <div class="tag-container" id="triggerContainer" onclick="document.getElementById('triggerInput').focus()">
+      <input type="text" id="triggerInput" placeholder="키워드 입력 후 Enter">
+    </div>
+    <div style="font-size:10px;color:var(--muted);margin-top:4px">채팅에서 자동 인텐트 매칭에 사용되는 키워드</div>
+  </div>
+
+  <div class="section no-hover" style="margin-top:12px">
+    <h3>테스트 실행</h3>
+    <div class="form-group">
+      <label>테스트 입력 (JSON)</label>
+      <textarea id="testInput" rows="4" class="mono" placeholder='{"symptom": "두통", "age": 35, "sex": "M"}'></textarea>
+    </div>
+    <button class="btn btn-green" onclick="testRun()">테스트 실행</button>
+    <div id="testResult" class="result-box" style="display:none"></div>
+  </div>
+</div>
+
+<!-- ═══ HISTORY ═══ -->
+<div id="panel-history" class="panel">
+  <div class="toolbar">
+    <div style="font-size:12px;color:var(--muted)" id="historyCount">-- records</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:10px;color:var(--muted)" id="historyRefreshInfo">Auto-refresh: 15s</span>
+      <button class="btn btn-sm" onclick="loadHistory()">새로고침</button>
+    </div>
+  </div>
+  <div class="section no-hover">
+    <table class="data">
+      <thead><tr><th>ID</th><th>Workflow</th><th>Status</th><th>Steps</th><th>Duration</th><th>Created</th></tr></thead>
+      <tbody id="historyTable"><tr><td colspan="6" class="empty">Loading...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══ RUN WORKFLOW ═══ -->
+<div id="panel-run" class="panel">
+  <div class="section no-hover">
+    <h3>워크플로 실행</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label>워크플로 선택</label>
+        <select id="runWorkflow">
+          <option value="">-- 선택 --</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>모드</label>
+        <select id="runMode">
+          <option value="sync">동기 (결과 대기)</option>
+          <option value="stream">스트리밍 (SSE)</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>입력 데이터 (JSON)</label>
+      <textarea id="runInput" rows="6" class="mono" placeholder='{"symptom": "두통", "age": 35, "sex": "M"}'></textarea>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" id="btnRun" onclick="runWorkflow()">실행</button>
+      <button class="btn btn-danger" id="btnStop" style="display:none" onclick="stopStream()">중지</button>
+    </div>
+  </div>
+
+  <div class="section no-hover" id="sseSection" style="display:none">
+    <h3>스트리밍 출력</h3>
+    <div class="log-box" id="sseLog"></div>
+  </div>
+
+  <div id="runResultSection" style="display:none">
+    <div class="section no-hover">
+      <h3>실행 결과</h3>
+      <div class="result-box" id="runResult"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ DETAIL MODAL ═══ -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal">
+    <h3 id="modalTitle">실행 상세</h3>
+    <div id="modalBody" class="mono" style="white-space:pre-wrap;font-size:11px;max-height:60vh;overflow-y:auto"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">닫기</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const BASE = (location.pathname.includes('/ollama') ? '/ollama' : '');
+let currentEditName = null;
+let isBuiltin = false;
+let steps = [];
+let triggers = [];
+let historyTimer = null;
+let sseController = null;
+
+// ── Toast ──
+function toast(msg, error) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (error ? ' error' : '');
+  setTimeout(() => t.className = 'toast', 3000);
+}
+
+// ── Tabs ──
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    const panels = ['workflows','editor','history','run'];
+    t.classList.toggle('active', panels[i] === name);
+  });
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  const panel = document.getElementById('panel-' + name);
+  if (panel) panel.classList.add('active');
+
+  if (name === 'workflows') loadWorkflows();
+  if (name === 'history') { loadHistory(); startHistoryRefresh(); }
+  else stopHistoryRefresh();
+  if (name === 'run') loadWorkflowSelect();
+}
+
+// ── API helper ──
+async function api(path, opts = {}) {
+  try {
+    const url = BASE + path;
+    const r = await fetch(url, {
+      headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
+      ...opts,
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+    return data;
+  } catch (e) {
+    throw e;
+  }
+}
+
+// ── Status check ──
+async function checkStatus() {
+  try {
+    const d = await api('/api/orchestrator/workflows');
+    const badge = document.getElementById('statusBadge');
+    badge.textContent = 'Online';
+    badge.className = 'status-badge status-online';
+  } catch {
+    const badge = document.getElementById('statusBadge');
+    badge.textContent = 'Offline';
+    badge.className = 'status-badge status-offline';
+  }
+}
+
+// ── Short ID ──
+function shortId(id) {
+  if (!id) return '--';
+  return id.length > 8 ? id.substring(0, 8) + '...' : id;
+}
+
+// ── Domain badge ──
+function domainBadge(domain) {
+  const d = (domain || 'custom').toLowerCase();
+  const map = { medical: 'badge-medical', legal: 'badge-legal', custom: 'badge-custom', general: 'badge-general', blog: 'badge-blog', cafe: 'badge-cafe' };
+  return `<span class="badge ${map[d] || 'badge-custom'}">${d.toUpperCase()}</span>`;
+}
+
+// ── 카테고리 추론 (domain + ID 기반) ──
+const CATEGORIES = {
+  '🏥 의료': { match: w => w.domain==='medical' || /medical|nurse|discharge|morning_round|bill_calculate|schedule_manage|patient_education|health_campaign/.test(w.name), color: '#22c55e' },
+  '📝 블로그': { match: w => /blog/.test(w.name), color: '#3b82f6' },
+  '☕ 카페': { match: w => /cafe/.test(w.name), color: '#a855f7' },
+  '💼 업무': { match: w => /meeting|daily_report|file_organize|smart_approval|todo_smart|calendar_smart|weekly_digest|onboarding/.test(w.name), color: '#eab308' },
+  '📚 콘텐츠': { match: w => /seo|content_repurpose|blog_series|blog_translate/.test(w.name), color: '#06b6d4' },
+  '⚖️ 법률': { match: w => w.domain==='legal' || /legal|claim|leave_request/.test(w.name), color: '#f97316' },
+  '🔧 기타': { match: () => true, color: '#71717a' },
+};
+
+// ── Status badge ──
+function statusBadge(status) {
+  const s = (status || '').toLowerCase();
+  const map = { completed: 'badge-ok', running: 'badge-run', failed: 'badge-err', pending: 'badge-pending' };
+  return `<span class="badge ${map[s] || 'badge-custom'}">${s}</span>`;
+}
+
+// ═══════════════════════════════════════════
+//  WORKFLOWS TAB
+// ═══════════════════════════════════════════
+
+async function loadWorkflows() {
+  try {
+    const d = await api('/api/orchestrator/workflows');
+    const wfs = d.workflows || [];
+    document.getElementById('wfCount').textContent = `${wfs.length} workflows`;
+    const grid = document.getElementById('wfGrid');
+    if (!wfs.length) {
+      grid.innerHTML = '<div class="empty">등록된 워크플로가 없습니다.</div>';
+      return;
+    }
+    // 카테고리별 그룹핑
+    const grouped = {};
+    const assigned = new Set();
+    for (const [catName, cat] of Object.entries(CATEGORIES)) {
+      const items = wfs.filter(w => !assigned.has(w.name) && cat.match(w));
+      items.forEach(w => assigned.add(w.name));
+      if (items.length) grouped[catName] = { items, color: cat.color };
+    }
+    grid.innerHTML = Object.entries(grouped).map(([catName, { items, color }]) => `
+      <div class="cat-section">
+        <div class="cat-header" style="border-left:3px solid ${color}">
+          <span>${catName}</span>
+          <span class="cat-count">${items.length}</span>
+        </div>
+        <div class="cat-grid">
+          ${items.map(w => `
+            <div class="card" onclick="editWorkflow('${w.name}')">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                <h3>${escHtml(w.display_name || w.name)}</h3>
+                ${domainBadge(w.domain)}
+              </div>
+              <div class="desc">${escHtml(w.description || '')}</div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <span style="font-size:10px;color:var(--muted)">ID: ${escHtml(w.name)}</span>
+                <span style="font-size:10px;color:var(--accent);font-weight:600">${w.steps || 0} steps</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    document.getElementById('wfGrid').innerHTML = `<div class="empty" style="color:var(--red)">로드 실패: ${escHtml(e.message)}</div>`;
+  }
+}
+
+// ═══════════════════════════════════════════
+//  EDITOR TAB
+// ═══════════════════════════════════════════
+
+function newWorkflow() {
+  currentEditName = null;
+  isBuiltin = false;
+  document.getElementById('editorTitle').textContent = '새 워크플로 등록';
+  document.getElementById('btnDelete').style.display = 'none';
+  document.getElementById('wfName').value = '';
+  document.getElementById('wfName').disabled = false;
+  document.getElementById('wfDisplayName').value = '';
+  document.getElementById('wfDescription').value = '';
+  document.getElementById('wfDomain').value = 'custom';
+  steps = [];
+  triggers = [];
+  renderSteps();
+  renderTriggers();
+  document.getElementById('testResult').style.display = 'none';
+  switchTab('editor');
+}
+
+async function editWorkflow(name) {
+  try {
+    const d = await api(`/api/orchestrator/workflow/${name}`);
+    currentEditName = name;
+    // Check if builtin - builtin workflows won't be in custom list
+    try {
+      const customs = await api('/api/orchestrator/workflow/custom');
+      isBuiltin = !(customs.workflows || []).some(w => w.name === name);
+    } catch { isBuiltin = false; }
+
+    document.getElementById('editorTitle').textContent = isBuiltin ? `${d.display_name} (내장 - 읽기 전용)` : `${d.display_name} 편집`;
+    document.getElementById('btnDelete').style.display = isBuiltin ? 'none' : '';
+    document.getElementById('btnSave').style.display = isBuiltin ? 'none' : '';
+    document.getElementById('wfName').value = name;
+    document.getElementById('wfName').disabled = true;
+    document.getElementById('wfDisplayName').value = d.display_name || '';
+    document.getElementById('wfDescription').value = d.description || '';
+    document.getElementById('wfDomain').value = d.domain || 'custom';
+
+    steps = (d.steps || []).map(s => ({
+      id: s.id,
+      action: s.action,
+      depends_on: s.depends_on || [],
+      optional: s.optional || false,
+    }));
+
+    // Load triggers from custom workflow detail
+    triggers = [];
+    try {
+      const customs = await api('/api/orchestrator/workflow/custom');
+      const cw = (customs.workflows || []).find(w => w.name === name);
+      if (cw && cw.triggers) {
+        triggers = typeof cw.triggers === 'string' ? JSON.parse(cw.triggers) : cw.triggers;
+      }
+    } catch {}
+
+    renderSteps();
+    renderTriggers();
+    document.getElementById('testResult').style.display = 'none';
+    switchTab('editor');
+  } catch (e) {
+    toast('워크플로 로드 실패: ' + e.message, true);
+  }
+}
+
+function renderSteps() {
+  const container = document.getElementById('stepsContainer');
+  if (!steps.length) {
+    container.innerHTML = '<div class="empty">아직 Step이 없습니다. "Step 추가" 버튼을 클릭하세요.</div>';
+    return;
+  }
+  const allIds = steps.map(s => s.id);
+  container.innerHTML = steps.map((s, i) => {
+    const depsOptions = allIds.filter(id => id !== s.id).map(id =>
+      `<option value="${id}" ${(s.depends_on || []).includes(id) ? 'selected' : ''}>${id}</option>`
+    ).join('');
+    return `
+      <div class="step-item" ${isBuiltin ? 'style="opacity:.7"' : ''}>
+        <div class="step-num">#${i + 1}</div>
+        <input class="step-id" value="${escHtml(s.id)}" placeholder="step_id"
+               onchange="updateStep(${i},'id',this.value)" ${isBuiltin ? 'disabled' : ''}>
+        <input class="step-action" value="${escHtml(s.action)}" placeholder="ai:/api/... 또는 llm:generate"
+               onchange="updateStep(${i},'action',this.value)" ${isBuiltin ? 'disabled' : ''}>
+        <select class="step-deps" multiple title="depends_on"
+                onchange="updateStepDeps(${i},this)" ${isBuiltin ? 'disabled' : ''}>
+          ${depsOptions}
+        </select>
+        <label class="opt">
+          <input type="checkbox" ${s.optional ? 'checked' : ''}
+                 onchange="updateStep(${i},'optional',this.checked)" ${isBuiltin ? 'disabled' : ''}> optional
+        </label>
+        ${isBuiltin ? '' : `<button class="btn btn-danger btn-sm" onclick="removeStep(${i})">X</button>`}
+      </div>
+    `;
+  }).join('');
+}
+
+function addStep() {
+  if (isBuiltin) return;
+  const idx = steps.length + 1;
+  steps.push({ id: `step_${idx}`, action: '', depends_on: [], optional: false });
+  renderSteps();
+}
+
+function removeStep(i) {
+  if (isBuiltin) return;
+  const removedId = steps[i].id;
+  steps.splice(i, 1);
+  // Clean up deps referencing removed step
+  steps.forEach(s => {
+    s.depends_on = (s.depends_on || []).filter(d => d !== removedId);
+  });
+  renderSteps();
+}
+
+function updateStep(i, field, value) {
+  if (field === 'id') {
+    const oldId = steps[i].id;
+    steps[i].id = value;
+    // Update deps referencing old id
+    steps.forEach(s => {
+      s.depends_on = (s.depends_on || []).map(d => d === oldId ? value : d);
+    });
+    renderSteps();
+  } else {
+    steps[i][field] = value;
+  }
+}
+
+function updateStepDeps(i, select) {
+  steps[i].depends_on = Array.from(select.selectedOptions).map(o => o.value);
+}
+
+// ── Triggers ──
+function renderTriggers() {
+  const container = document.getElementById('triggerContainer');
+  const input = document.getElementById('triggerInput');
+  // Remove existing tags
+  container.querySelectorAll('.tag').forEach(t => t.remove());
+  triggers.forEach((t, i) => {
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.innerHTML = `${escHtml(t)}<span class="tag-x" onclick="removeTrigger(${i})">x</span>`;
+    container.insertBefore(tag, input);
+  });
+}
+
+function removeTrigger(i) {
+  if (isBuiltin) return;
+  triggers.splice(i, 1);
+  renderTriggers();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('triggerInput').addEventListener('keydown', (e) => {
+    if (isBuiltin) return;
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const val = e.target.value.trim();
+      if (val && !triggers.includes(val)) {
+        triggers.push(val);
+        renderTriggers();
+      }
+      e.target.value = '';
+    }
+    if (e.key === 'Backspace' && !e.target.value && triggers.length) {
+      triggers.pop();
+      renderTriggers();
+    }
+  });
+});
+
+// ── Save ──
+async function saveWorkflow() {
+  const name = document.getElementById('wfName').value.trim();
+  const displayName = document.getElementById('wfDisplayName').value.trim();
+  const description = document.getElementById('wfDescription').value.trim();
+  const domain = document.getElementById('wfDomain').value;
+
+  if (!name || !displayName) {
+    toast('Name과 표시 이름은 필수입니다.', true);
+    return;
+  }
+  if (!/^[a-z0-9_]+$/.test(name)) {
+    toast('Name은 영문소문자, 숫자, 밑줄만 가능합니다.', true);
+    return;
+  }
+  if (!steps.length) {
+    toast('최소 1개 이상의 Step이 필요합니다.', true);
+    return;
+  }
+  for (const s of steps) {
+    if (!s.id || !s.action) {
+      toast('모든 Step의 ID와 Action은 필수입니다.', true);
+      return;
+    }
+  }
+
+  const payload = {
+    name,
+    display_name: displayName,
+    description,
+    domain,
+    steps: steps.map(s => ({
+      id: s.id,
+      action: s.action,
+      depends_on: s.depends_on || [],
+      optional: s.optional || false,
+    })),
+    triggers,
+  };
+
+  try {
+    if (currentEditName) {
+      await api(`/api/orchestrator/workflow/${currentEditName}`, { method: 'PUT', body: JSON.stringify(payload) });
+      toast('워크플로가 수정되었습니다.');
+    } else {
+      await api('/api/orchestrator/workflow/register', { method: 'POST', body: JSON.stringify(payload) });
+      toast('워크플로가 등록되었습니다.');
+    }
+    switchTab('workflows');
+  } catch (e) {
+    toast('저장 실패: ' + e.message, true);
+  }
+}
+
+// ── Delete ──
+async function deleteWorkflow() {
+  if (!currentEditName) return;
+  if (!confirm(`"${currentEditName}" 워크플로를 삭제하시겠습니까?`)) return;
+  try {
+    await api(`/api/orchestrator/workflow/${currentEditName}`, { method: 'DELETE' });
+    toast('워크플로가 삭제되었습니다.');
+    currentEditName = null;
+    switchTab('workflows');
+  } catch (e) {
+    toast('삭제 실패: ' + e.message, true);
+  }
+}
+
+// ── Test Run ──
+async function testRun() {
+  const name = document.getElementById('wfName').value.trim();
+  if (!name) { toast('워크플로 이름이 필요합니다.', true); return; }
+  let input;
+  try {
+    const raw = document.getElementById('testInput').value.trim();
+    input = raw ? JSON.parse(raw) : {};
+  } catch { toast('JSON 형식 오류', true); return; }
+
+  const resultEl = document.getElementById('testResult');
+  resultEl.style.display = 'block';
+  resultEl.textContent = '실행 중...';
+
+  try {
+    const d = await api('/api/orchestrator/run', { method: 'POST', body: JSON.stringify({ workflow: name, input }) });
+    resultEl.textContent = JSON.stringify(d, null, 2);
+  } catch (e) {
+    resultEl.textContent = 'Error: ' + e.message;
+  }
+}
+
+// ═══════════════════════════════════════════
+//  HISTORY TAB
+// ═══════════════════════════════════════════
+
+async function loadHistory() {
+  try {
+    const d = await api('/api/orchestrator/history?limit=50');
+    const rows = d.history || [];
+    document.getElementById('historyCount').textContent = `${rows.length} records`;
+    const tbody = document.getElementById('historyTable');
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty">실행 기록이 없습니다.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(r => `
+      <tr onclick="showRunDetail('${r.id}')">
+        <td class="mono">${shortId(r.id)}</td>
+        <td>${escHtml(r.workflow || '')}</td>
+        <td>${statusBadge(r.status)}</td>
+        <td>${r.steps_completed || 0}/${r.steps_total || 0}</td>
+        <td>${r.total_duration_ms ? (r.total_duration_ms / 1000).toFixed(1) + 's' : '--'}</td>
+        <td style="font-size:10px;color:var(--muted)">${r.created_at || ''}</td>
+      </tr>
+    `).join('');
+  } catch (e) {
+    document.getElementById('historyTable').innerHTML = `<tr><td colspan="6" class="empty" style="color:var(--red)">로드 실패: ${escHtml(e.message)}</td></tr>`;
+  }
+}
+
+async function showRunDetail(runId) {
+  try {
+    const d = await api(`/api/orchestrator/status/${runId}`);
+    document.getElementById('modalTitle').textContent = `실행 상세 - ${shortId(runId)}`;
+    document.getElementById('modalBody').textContent = JSON.stringify(d, null, 2);
+    document.getElementById('detailModal').classList.add('show');
+  } catch (e) {
+    toast('상세 로드 실패: ' + e.message, true);
+  }
+}
+
+function closeModal() {
+  document.getElementById('detailModal').classList.remove('show');
+}
+
+function startHistoryRefresh() {
+  stopHistoryRefresh();
+  historyTimer = setInterval(loadHistory, 15000);
+}
+
+function stopHistoryRefresh() {
+  if (historyTimer) { clearInterval(historyTimer); historyTimer = null; }
+}
+
+// ═══════════════════════════════════════════
+//  RUN WORKFLOW TAB
+// ═══════════════════════════════════════════
+
+async function loadWorkflowSelect() {
+  try {
+    const d = await api('/api/orchestrator/workflows');
+    const sel = document.getElementById('runWorkflow');
+    const current = sel.value;
+    sel.innerHTML = '<option value="">-- 선택 --</option>';
+    (d.workflows || []).forEach(w => {
+      const opt = document.createElement('option');
+      opt.value = w.name;
+      opt.textContent = `${w.display_name || w.name} (${w.steps} steps)`;
+      sel.appendChild(opt);
+    });
+    if (current) sel.value = current;
+  } catch {}
+}
+
+async function runWorkflow() {
+  const workflow = document.getElementById('runWorkflow').value;
+  if (!workflow) { toast('워크플로를 선택하세요.', true); return; }
+
+  let input;
+  try {
+    const raw = document.getElementById('runInput').value.trim();
+    input = raw ? JSON.parse(raw) : {};
+  } catch { toast('JSON 형식 오류', true); return; }
+
+  const mode = document.getElementById('runMode').value;
+
+  document.getElementById('runResultSection').style.display = 'none';
+  document.getElementById('sseSection').style.display = 'none';
+  document.getElementById('btnRun').disabled = true;
+
+  if (mode === 'stream') {
+    runStream(workflow, input);
+  } else {
+    runSync(workflow, input);
+  }
+}
+
+async function runSync(workflow, input) {
+  const resultEl = document.getElementById('runResult');
+  document.getElementById('runResultSection').style.display = '';
+  resultEl.textContent = '실행 중...';
+  try {
+    const d = await api('/api/orchestrator/run', { method: 'POST', body: JSON.stringify({ workflow, input }) });
+    resultEl.textContent = JSON.stringify(d, null, 2);
+    toast('실행 완료');
+  } catch (e) {
+    resultEl.textContent = 'Error: ' + e.message;
+    toast('실행 실패: ' + e.message, true);
+  }
+  document.getElementById('btnRun').disabled = false;
+}
+
+function runStream(workflow, input) {
+  const logEl = document.getElementById('sseLog');
+  document.getElementById('sseSection').style.display = '';
+  document.getElementById('btnStop').style.display = '';
+  logEl.innerHTML = '';
+
+  const controller = new AbortController();
+  sseController = controller;
+
+  fetch(BASE + '/api/orchestrator/run/stream', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ workflow, input }),
+    signal: controller.signal,
+  }).then(response => {
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    function read() {
+      reader.read().then(({ done, value }) => {
+        if (done) {
+          finishStream();
+          return;
+        }
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.substring(6);
+            appendSSE(data);
+          }
+        }
+        read();
+      }).catch(e => {
+        if (e.name !== 'AbortError') appendSSE(JSON.stringify({ error: e.message }));
+        finishStream();
+      });
+    }
+    read();
+  }).catch(e => {
+    if (e.name !== 'AbortError') {
+      appendSSE(JSON.stringify({ error: e.message }));
+    }
+    finishStream();
+  });
+}
+
+function appendSSE(data) {
+  const logEl = document.getElementById('sseLog');
+  const ts = new Date().toLocaleTimeString();
+  let parsed;
+  try { parsed = JSON.parse(data); } catch { parsed = null; }
+
+  const div = document.createElement('div');
+  div.className = 'sse-line';
+  if (parsed) {
+    const evType = parsed.event || parsed.status || 'data';
+    div.innerHTML = `<span class="ts">${ts}</span><span class="ev">[${evType}]</span>${escHtml(JSON.stringify(parsed))}`;
+  } else {
+    div.innerHTML = `<span class="ts">${ts}</span>${escHtml(data)}`;
+  }
+  logEl.appendChild(div);
+  logEl.scrollTop = logEl.scrollHeight;
+
+  // If this is a final result, also show in result section
+  if (parsed && (parsed.status === 'completed' || parsed.status === 'failed')) {
+    document.getElementById('runResultSection').style.display = '';
+    document.getElementById('runResult').textContent = JSON.stringify(parsed, null, 2);
+  }
+}
+
+function finishStream() {
+  document.getElementById('btnRun').disabled = false;
+  document.getElementById('btnStop').style.display = 'none';
+  sseController = null;
+  toast('스트리밍 완료');
+}
+
+function stopStream() {
+  if (sseController) {
+    sseController.abort();
+    sseController = null;
+  }
+  document.getElementById('btnRun').disabled = false;
+  document.getElementById('btnStop').style.display = 'none';
+  toast('스트리밍 중지됨');
+}
+
+// ── Util ──
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Close modal on overlay click ──
+document.addEventListener('click', (e) => {
+  if (e.target.classList.contains('modal-overlay')) closeModal();
+});
+
+// ── Close modal on Escape ──
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeModal();
+});
+
+// ── Init ──
+let statusTimer = null;
+function startStatusRefresh() {
+  if (!statusTimer) statusTimer = setInterval(checkStatus, 30000);
+}
+function stopStatusRefresh() {
+  if (statusTimer) { clearInterval(statusTimer); statusTimer = null; }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { stopStatusRefresh(); stopHistoryRefresh(); }
+  else { checkStatus(); startStatusRefresh(); }
+});
+
+checkStatus();
+loadWorkflows();
+startStatusRefresh();
+</script>
+</body>
+</html>
