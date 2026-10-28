@@ -308,7 +308,7 @@ logrotate: 일별, 7일 보관, 50MB 임계
 
 | 대상 | 방법 |
 |------|------|
-| 코드 | GitHub (seanshin/WeRUBLLMManager) |
+| 코드 | GitHub (seanshin/werub-ai-server) |
 | DB | SQLite WAL → 파일 복사 |
 | 모델 | Ollama 재다운로드 가능 |
 | ChromaDB | chromadb_data/ 디렉토리 복사 |
